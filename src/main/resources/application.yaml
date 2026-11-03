@@ -1,3 +1,11 @@
 spring:
   application:
     name: venn-take-home
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
