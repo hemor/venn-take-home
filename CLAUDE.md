@@ -1,0 +1,31 @@
+# Venn take-home: velocity limits
+
+Spring Boot service that accepts or declines fund-load attempts per customer. Input is JSON lines, output is `{id, customer_id, accepted}`.
+
+## Rules (verified against Venn's expected output)
+- Per customer: max $5,000/day, $20,000/week, 3 loads/day. Limits are inclusive: exactly $5,000 is allowed.
+- Day = UTC date. Week starts Monday 00:00 UTC.
+- Only accepted loads count toward the limits. Declined loads do not.
+- Duplicate load ID for the same customer: ignore all but the first, with no response line. A declined load's ID still counts as seen.
+- Input arrives in chronological order.
+
+## Architecture
+- The service layer holds the logic. The REST controller and the CLI are thin adapters that call it in-process.
+- CLI is an `ApplicationRunner` active only with `--input` and `--output`. A malformed line is logged and skipped, never fatal.
+- Every attempt is stored with status (accepted/rejected) and a reason. Limit sums query accepted rows only.
+- Persistence: Spring Data JPA behind a repository interface, portable Flyway SQL, H2 in-memory by default.
+- Errors: `ProblemDetail` via `@RestControllerAdvice`. API is under `/v1/`.
+- Logging: SLF4J with a correlation ID in the MDC. Metrics: Micrometer `MeterRegistry` injected directly, no wrapper.
+
+## Stack
+Java 25 (21 fallback), Spring Boot 4.x, Maven, Flyway, H2, Actuator, springdoc-openapi. No Lombok.
+
+## Testing
+- Unit tests for the limit rules, including the boundaries and the Sunday-to-Monday rollover.
+- Integration tests on committed fixtures in `src/test/resources`.
+- A full-data comparison test reads `question/` and skips itself when the files are absent. `question/` is gitignored.
+
+## Conventions
+- Small commits, one task each. Commit messages end with the `Co-Authored-By` trailer.
+- Comments only when the code can't explain itself. Rename instead of commenting.
+- Package is `com.emmanuel.venn`.
