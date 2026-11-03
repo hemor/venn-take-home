@@ -1,0 +1,24 @@
+{"id":"1","customer_id":"100","load_amount":"$5000.00","time":"2018-01-01T00:00:00Z"}
+{"id":"10","customer_id":"200","load_amount":"$1.00","time":"2018-01-01T01:00:00Z"}
+{"id":"11","customer_id":"200","load_amount":"$1.00","time":"2018-01-01T02:00:00Z"}
+{not json
+{"id":"12","customer_id":"200","load_amount":"$1.00","time":"2018-01-01T03:00:00Z"}
+{"id":"13","customer_id":"200","load_amount":"$1.00","time":"2018-01-01T04:00:00Z"}
+{"id":"20","customer_id":"300","load_amount":"$3000.00","time":"2018-01-01T05:00:00Z"}
+{"id":"21","customer_id":"300","load_amount":"$3000.00","time":"2018-01-01T06:00:00Z"}
+
+{"id":"22","customer_id":"300","load_amount":"$2000.00","time":"2018-01-01T07:00:00Z"}
+{"id":"21","customer_id":"300","load_amount":"$100.00","time":"2018-01-01T08:00:00Z"}
+{"id":"1","customer_id":"400","load_amount":"$10.00","time":"2018-01-01T09:00:00Z"}
+{"id":"2","customer_id":"100","load_amount":"$0.01","time":"2018-01-01T10:00:00Z"}
+{"id":"1","customer_id":"100","load_amount":"$5000.00","time":"2018-01-01T11:00:00Z"}
+{"id":"40","customer_id":"600","load_amount":"12.50","time":"2018-01-01T12:00:00Z"}
+{"id":"3","customer_id":"100","load_amount":"$5000.00","time":"2018-01-02T00:00:00Z"}
+{"id":"14","customer_id":"200","load_amount":"$1.00","time":"2018-01-02T00:00:00Z"}
+{"id":"30","customer_id":"500","load_amount":"$5000.00","time":"2018-01-01T23:00:00-05:00"}
+{"id":"31","customer_id":"500","load_amount":"$1.00","time":"2018-01-02T04:30:00Z"}
+{"id":"4","customer_id":"100","load_amount":"$5000.00","time":"2018-01-03T00:00:00Z"}
+{"id":"5","customer_id":"100","load_amount":"$5000.00","time":"2018-01-04T00:00:00Z"}
+{"id":"6","customer_id":"100","load_amount":"$0.01","time":"2018-01-05T00:00:00Z"}
+{"id":"8","customer_id":"100","load_amount":"$0.01","time":"2018-01-07T23:59:59Z"}
+{"id":"7","customer_id":"100","load_amount":"$5000.00","time":"2018-01-08T00:00:00Z"}
