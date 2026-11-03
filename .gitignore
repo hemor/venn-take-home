@@ -1,0 +1,33 @@
+# Task material (not published)
+question/
+
+# AI tooling scratch
+.docs/
+.superpowers/
+.claude/settings.local.json
+
+# Build
+target/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+HELP.md
+.mvn/wrapper/maven-wrapper.jar
+
+# Eclipse / NetBeans
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
