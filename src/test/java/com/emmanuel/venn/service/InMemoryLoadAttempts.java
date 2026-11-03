@@ -11,12 +11,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-class InMemoryLoadAttempts implements LoadAttempts {
+public class InMemoryLoadAttempts implements LoadAttempts {
 
-    record Stored(LoadAttempt attempt, Decision decision) {}
+    public record Stored(LoadAttempt attempt, Decision decision) {}
 
-    final List<Stored> stored = new ArrayList<>();
-    boolean failNextSaveAsDuplicate;
+    public final List<Stored> stored = new ArrayList<>();
+    public boolean failNextSaveAsDuplicate;
 
     @Override
     public boolean exists(String customerId, String loadId) {
