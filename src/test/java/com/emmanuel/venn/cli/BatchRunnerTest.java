@@ -4,11 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.emmanuel.venn.service.InMemoryLoadAttempts;
+import java.io.Reader;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.MDC;
 import org.springframework.boot.DefaultApplicationArguments;
 
 class BatchRunnerTest {
@@ -52,6 +56,24 @@ class BatchRunnerTest {
         assertThatThrownBy(() -> runner.run(new DefaultApplicationArguments(
                 "--input=" + dir.resolve("missing.txt"), "--output=" + dir.resolve("out.txt"))))
                 .isInstanceOf(NoSuchFileException.class);
+    }
+
+    @Test
+    void tagsLogsWithABatchCorrelationIdOnlyWhileRunning() throws Exception {
+        AtomicReference<String> seen = new AtomicReference<>();
+        BatchRunner capturing = new BatchRunner(new BatchProcessor(null, null) {
+            @Override
+            BatchSummary process(Reader input, Writer output) {
+                seen.set(MDC.get("correlationId"));
+                return new BatchSummary(0, 0, 0, 0);
+            }
+        });
+        Path input = Files.writeString(dir.resolve("in.txt"), LINE);
+
+        capturing.run(new DefaultApplicationArguments("--input=" + input, "--output=" + dir.resolve("out.txt")));
+
+        assertThat(seen.get()).startsWith("batch-");
+        assertThat(MDC.get("correlationId")).isNull();
     }
 
     @Test

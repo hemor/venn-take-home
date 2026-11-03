@@ -1,5 +1,6 @@
 package com.emmanuel.venn.cli;
 
+import com.emmanuel.venn.api.CorrelationIdFilter;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -7,8 +8,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
@@ -38,9 +41,10 @@ public class BatchRunner implements ApplicationRunner {
         }
         Path input = Path.of(requiredOption(args, INPUT));
         Path output = Path.of(requiredOption(args, OUTPUT));
-        log.info("Processing {} into {}", input, output);
-        try (BufferedReader reader = Files.newBufferedReader(input);
+        try (MDC.MDCCloseable ignored = MDC.putCloseable(CorrelationIdFilter.MDC_KEY, "batch-" + UUID.randomUUID());
+                BufferedReader reader = Files.newBufferedReader(input);
                 BufferedWriter writer = Files.newBufferedWriter(output)) {
+            log.info("Processing {} into {}", input, output);
             processor.process(reader, writer);
         }
     }
