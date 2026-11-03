@@ -3,20 +3,12 @@ package com.emmanuel.venn.cli;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.emmanuel.venn.api.LoadHandler;
 import com.emmanuel.venn.domain.Decision;
 import com.emmanuel.venn.domain.LoadAttempt;
-import com.emmanuel.venn.domain.VelocityLimitPolicy;
-import com.emmanuel.venn.domain.VelocityLimits;
 import com.emmanuel.venn.service.InMemoryLoadAttempts;
-import com.emmanuel.venn.service.LoadService;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import jakarta.validation.Validation;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.json.JsonMapper;
 
 class BatchProcessorTest {
 
@@ -25,12 +17,7 @@ class BatchProcessorTest {
     private final InMemoryLoadAttempts store = new InMemoryLoadAttempts();
 
     private BatchSummary run(InMemoryLoadAttempts attempts, String input, StringWriter output) throws Exception {
-        LoadHandler handler = new LoadHandler(
-                new LoadService(attempts,
-                        new VelocityLimitPolicy(new VelocityLimits(new BigDecimal("5000"), new BigDecimal("20000"), 3)),
-                        new SimpleMeterRegistry()),
-                Validation.buildDefaultValidatorFactory().getValidator());
-        return new BatchProcessor(handler, JsonMapper.builder().build()).process(new StringReader(input), output);
+        return BatchFixtures.processor(attempts).process(new StringReader(input), output);
     }
 
     private static String line(String id, String customerId, String amount, String time) {
