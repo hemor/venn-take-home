@@ -10,6 +10,12 @@ spring:
         jdbc:
           time_zone: UTC
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
 logging:
   pattern:
     correlation: "[%X{correlationId:-}] "
