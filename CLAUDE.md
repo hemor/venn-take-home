@@ -25,6 +25,11 @@ Java 25 (21 fallback), Spring Boot 4.x, Maven, Flyway, H2, Actuator, springdoc-o
 - Integration tests on committed fixtures in `src/test/resources`.
 - A full-data comparison test reads `question/` and skips itself when the files are absent. `question/` is gitignored.
 
+## Commands
+- `./mvnw test` runs everything. `./mvnw -q package` builds the jar.
+- Batch: `java -jar target/venn-take-home-0.0.1-SNAPSHOT.jar --input=<file> --output=<file>`.
+- Venn's expected output uses CRLF. Compare ignoring carriage returns.
+
 ## Conventions
 - Small commits, one task each. Commit messages end with the `Co-Authored-By` trailer.
 - Comments only when the code can't explain itself. Rename instead of commenting.
