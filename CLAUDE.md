@@ -4,6 +4,7 @@ Spring Boot service that accepts or declines fund-load attempts per customer. In
 
 ## Rules (verified against Venn's expected output)
 - Per customer: max $5,000/day, $20,000/week, 3 loads/day. Limits are inclusive: exactly $5,000 is allowed.
+- Rules are data under `velocity.rules` in application.yaml (name, window DAY|WEEK, metric AMOUNT|COUNT, max). The rule name is stored as the rejection reason. Order matters: the first broken rule is reported.
 - Day = UTC date. Week starts Monday 00:00 UTC.
 - Only accepted loads count toward the limits. Declined loads do not.
 - Duplicate load ID for the same customer: ignore all but the first, with no response line. A declined load's ID still counts as seen.
@@ -21,7 +22,7 @@ Spring Boot service that accepts or declines fund-load attempts per customer. In
 Java 25 (21 fallback), Spring Boot 4.x, Maven, Flyway, H2, Actuator, springdoc-openapi. No Lombok.
 
 ## Testing
-- Unit tests for the limit rules, including the boundaries and the Sunday-to-Monday rollover.
+- Unit tests for the rules and windows, including the boundaries and the Sunday-to-Monday rollover.
 - Integration tests on committed fixtures in `src/test/resources`.
 - A full-data comparison test reads `question/` and skips itself when the files are absent. `question/` is gitignored.
 

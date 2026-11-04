@@ -6,6 +6,21 @@ A Spring Boot service that accepts or declines fund-load attempts per customer. 
 
 Per customer: at most $5,000 per day, $20,000 per week and 3 loads per day. A day is a UTC date and a week starts on Monday 00:00 UTC.
 
+The rules are configuration, not code. They live under `velocity.rules` in `application.yaml`:
+
+```yaml
+velocity:
+  rules:
+    - name: DAILY_COUNT_EXCEEDED   # also stored as the rejection reason
+      window: DAY                  # DAY or WEEK
+      metric: COUNT                # AMOUNT (dollars) or COUNT (number of loads)
+      max: 3
+```
+
+Rules are checked in the order listed and the first one broken is the reason reported. Add, remove or change entries to change the limits, for example a weekly cap of 10 loads is one more entry. To change them without rebuilding, put the `velocity` block in a separate file and start the app with `--spring.config.additional-location=file:./rules.yaml`. A list in the external file replaces the built-in one. Startup fails if there are no rules, a rule is invalid (blank name, non-positive max, fractional count) or two rules share a name.
+
+A new window type (for example a month) is one enum constant in `WindowType`.
+
 Interpretations I verified against the expected output in the task:
 
 - Only **accepted** loads count toward the limits. A declined load does not use up allowance.
@@ -63,7 +78,7 @@ Docker files are included (`Dockerfile`, `compose.yaml` with Prometheus). They h
 api      REST controller, request/response DTOs, LoadHandler, correlation ID filter
 cli      BatchRunner and BatchProcessor
 service  LoadService: duplicate check, policy, persistence, metrics
-domain   VelocityLimitPolicy, LimitWindows, LoadAmountParser, the LoadAttempts port
+domain   VelocityRule, VelocityLimitPolicy, WindowType, LoadAmountParser, the LoadAttempts port
 persistence  JPA adapter for the port
 ```
 
@@ -71,7 +86,7 @@ persistence  JPA adapter for the port
 - The rules are a pure class with no Spring or database dependency, so they are tested without a context.
 - Every attempt is stored with its decision and rejection reason, which doubles as an audit trail. A unique `(customer_id, load_id)` constraint backs duplicate detection and a check constraint ties status to rejection reason.
 - The schema is plain SQL under Flyway, and the service depends on a repository interface, so moving from H2 to Postgres means changing the datasource and the driver.
-- Limits are configuration (`velocity.limits.*` in `application.yaml`).
+- Rules are data (`VelocityRule`) evaluated in order by `VelocityLimitPolicy`. The policy asks for a customer's accepted totals once per distinct window, and stops at the first broken rule.
 
 ## Observability
 
