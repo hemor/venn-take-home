@@ -43,7 +43,7 @@ class JpaLoadAttemptsTest {
 
     @Test
     void remembersRejectedAttemptsToo() {
-        attempts.save(load("1", "A", "9999.00", WEDNESDAY_NOON), Decision.rejected("DAILY_AMOUNT_EXCEEDED"));
+        attempts.save(load("1", "A", "9999.00", WEDNESDAY_NOON), Decision.rejected("DAILY_AMOUNT_LIMIT"));
 
         assertThat(attempts.exists("A", "1")).isTrue();
     }
@@ -92,7 +92,7 @@ class JpaLoadAttemptsTest {
     @Test
     void ignoresRejectedLoads() {
         attempts.save(load("1", "A", "100.00", WEDNESDAY_NOON), Decision.accepted());
-        attempts.save(load("2", "A", "9000.00", WEDNESDAY_NOON), Decision.rejected("DAILY_AMOUNT_EXCEEDED"));
+        attempts.save(load("2", "A", "9000.00", WEDNESDAY_NOON), Decision.rejected("DAILY_AMOUNT_LIMIT"));
 
         Totals day = attempts.acceptedTotals("A", DAY);
 

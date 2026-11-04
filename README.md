@@ -11,7 +11,7 @@ The rules are configuration, not code. They live under `velocity.rules` in `appl
 ```yaml
 velocity:
   rules:
-    - name: DAILY_COUNT_EXCEEDED   # also stored as the rejection reason
+    - name: DAILY_COUNT_LIMIT   # also stored as the rejection reason
       window: DAY                  # DAY or WEEK
       metric: COUNT                # AMOUNT (dollars) or COUNT (number of loads)
       max: 3

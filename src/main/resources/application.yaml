@@ -22,15 +22,15 @@ logging:
 
 velocity:
   rules:
-    - name: DAILY_COUNT_EXCEEDED
+    - name: DAILY_COUNT_LIMIT
       window: DAY
       metric: COUNT
       max: 3
-    - name: DAILY_AMOUNT_EXCEEDED
+    - name: DAILY_AMOUNT_LIMIT
       window: DAY
       metric: AMOUNT
       max: 5000
-    - name: WEEKLY_AMOUNT_EXCEEDED
+    - name: WEEKLY_AMOUNT_LIMIT
       window: WEEK
       metric: AMOUNT
       max: 20000

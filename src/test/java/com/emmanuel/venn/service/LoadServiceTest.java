@@ -43,8 +43,8 @@ class LoadServiceTest {
     void rejectsLoadOverDailyAmountAndStoresReason() {
         Optional<Decision> decision = service.process(load("1", "A", "5000.01", MONDAY));
 
-        assertThat(decision).contains(Decision.rejected("DAILY_AMOUNT_EXCEEDED"));
-        assertThat(store.stored.get(0).decision().rejectionReason()).isEqualTo("DAILY_AMOUNT_EXCEEDED");
+        assertThat(decision).contains(Decision.rejected("DAILY_AMOUNT_LIMIT"));
+        assertThat(store.stored.get(0).decision().rejectionReason()).isEqualTo("DAILY_AMOUNT_LIMIT");
     }
 
     @Test
@@ -52,7 +52,7 @@ class LoadServiceTest {
         service.process(load("1", "A", "3000.00", MONDAY));
 
         assertThat(service.process(load("2", "A", "3000.00", MONDAY.plusSeconds(60))))
-                .contains(Decision.rejected("DAILY_AMOUNT_EXCEEDED"));
+                .contains(Decision.rejected("DAILY_AMOUNT_LIMIT"));
     }
 
     @Test
@@ -62,7 +62,7 @@ class LoadServiceTest {
         service.process(load("3", "A", "400.00", MONDAY.plusSeconds(2)));
 
         assertThat(service.process(load("4", "A", "400.00", MONDAY.plusSeconds(3))))
-                .contains(Decision.rejected("DAILY_COUNT_EXCEEDED"));
+                .contains(Decision.rejected("DAILY_COUNT_LIMIT"));
     }
 
     @Test
@@ -87,7 +87,7 @@ class LoadServiceTest {
         }
 
         assertThat(service.process(load("x", "A", "1.00", MONDAY.plusSeconds(4 * 86_400L))))
-                .contains(Decision.rejected("WEEKLY_AMOUNT_EXCEEDED"));
+                .contains(Decision.rejected("WEEKLY_AMOUNT_LIMIT"));
     }
 
     @Test
@@ -145,6 +145,6 @@ class LoadServiceTest {
         service.process(load("1", "A", "9000.00", MONDAY));
 
         assertThat(meters.counter("loads.processed", "outcome", "rejected",
-                "reason", "DAILY_AMOUNT_EXCEEDED").count()).isEqualTo(1);
+                "reason", "DAILY_AMOUNT_LIMIT").count()).isEqualTo(1);
     }
 }

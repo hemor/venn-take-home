@@ -10,9 +10,9 @@ public final class TaskRules {
 
     public static List<VelocityRule> rules() {
         return List.of(
-                new VelocityRule("DAILY_COUNT_EXCEEDED", WindowType.DAY, Metric.COUNT, new BigDecimal("3")),
-                new VelocityRule("DAILY_AMOUNT_EXCEEDED", WindowType.DAY, Metric.AMOUNT, new BigDecimal("5000")),
-                new VelocityRule("WEEKLY_AMOUNT_EXCEEDED", WindowType.WEEK, Metric.AMOUNT, new BigDecimal("20000")));
+                new VelocityRule("DAILY_COUNT_LIMIT", WindowType.DAY, Metric.COUNT, new BigDecimal("3")),
+                new VelocityRule("DAILY_AMOUNT_LIMIT", WindowType.DAY, Metric.AMOUNT, new BigDecimal("5000")),
+                new VelocityRule("WEEKLY_AMOUNT_LIMIT", WindowType.WEEK, Metric.AMOUNT, new BigDecimal("20000")));
     }
 
     public static VelocityLimitPolicy policy() {

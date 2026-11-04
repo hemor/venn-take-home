@@ -41,12 +41,12 @@ class VelocityLimitPolicyTest {
     @Test
     void rejectsDailyTotalOneCentOverLimit() {
         assertThat(evaluateTaskRules("2000.01", totals("3000.00", 1), totals("3000.00", 1)))
-                .contains("DAILY_AMOUNT_EXCEEDED");
+                .contains("DAILY_AMOUNT_LIMIT");
     }
 
     @Test
     void rejectsSingleLoadOverDailyLimit() {
-        assertThat(evaluateTaskRules("5862.58", Totals.NONE, Totals.NONE)).contains("DAILY_AMOUNT_EXCEEDED");
+        assertThat(evaluateTaskRules("5862.58", Totals.NONE, Totals.NONE)).contains("DAILY_AMOUNT_LIMIT");
     }
 
     @Test
@@ -56,7 +56,7 @@ class VelocityLimitPolicyTest {
 
     @Test
     void rejectsWeeklyTotalOneCentOverLimit() {
-        assertThat(evaluateTaskRules("1.00", Totals.NONE, totals("20000.00", 0))).contains("WEEKLY_AMOUNT_EXCEEDED");
+        assertThat(evaluateTaskRules("1.00", Totals.NONE, totals("20000.00", 0))).contains("WEEKLY_AMOUNT_LIMIT");
     }
 
     @Test
@@ -66,13 +66,13 @@ class VelocityLimitPolicyTest {
 
     @Test
     void rejectsFourthLoadOfTheDayRegardlessOfAmount() {
-        assertThat(evaluateTaskRules("1.00", totals("3.00", 3), totals("3.00", 3))).contains("DAILY_COUNT_EXCEEDED");
+        assertThat(evaluateTaskRules("1.00", totals("3.00", 3), totals("3.00", 3))).contains("DAILY_COUNT_LIMIT");
     }
 
     @Test
     void reportsTheFirstConfiguredRuleWhenSeveralAreBroken() {
         assertThat(evaluateTaskRules("6000.00", totals("0", 3), totals("20000.00", 3)))
-                .contains("DAILY_COUNT_EXCEEDED");
+                .contains("DAILY_COUNT_LIMIT");
     }
 
     @Test
@@ -83,9 +83,9 @@ class VelocityLimitPolicyTest {
     @Test
     void supportsRulesBeyondTheTaskLimits() {
         List<VelocityRule> rules = List.of(
-                new VelocityRule("WEEKLY_COUNT_EXCEEDED", WindowType.WEEK, Metric.COUNT, new BigDecimal("2")));
+                new VelocityRule("WEEKLY_COUNT_LIMIT", WindowType.WEEK, Metric.COUNT, new BigDecimal("2")));
 
-        assertThat(evaluate(rules, "1.00", Totals.NONE, totals("2.00", 2))).contains("WEEKLY_COUNT_EXCEEDED");
+        assertThat(evaluate(rules, "1.00", Totals.NONE, totals("2.00", 2))).contains("WEEKLY_COUNT_LIMIT");
         assertThat(evaluate(rules, "1.00", Totals.NONE, totals("1.00", 1))).isEmpty();
     }
 
