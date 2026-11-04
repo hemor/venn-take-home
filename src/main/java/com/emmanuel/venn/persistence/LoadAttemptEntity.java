@@ -19,23 +19,22 @@ class LoadAttemptEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "load_id", nullable = false)
+    @Column(nullable = false)
     private String loadId;
 
-    @Column(name = "customer_id", nullable = false)
+    @Column(nullable = false)
     private String customerId;
 
     @Column(nullable = false)
     private BigDecimal amount;
 
-    @Column(name = "occurred_at", nullable = false)
+    @Column(nullable = false)
     private Instant occurredAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AttemptStatus status;
 
-    @Column(name = "rejection_reason")
     private String rejectionReason;
 
     protected LoadAttemptEntity() {}

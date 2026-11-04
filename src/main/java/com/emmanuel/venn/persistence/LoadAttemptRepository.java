@@ -10,12 +10,12 @@ interface LoadAttemptRepository extends JpaRepository<LoadAttemptEntity, Long> {
     boolean existsByCustomerIdAndLoadId(String customerId, String loadId);
 
     @Query("""
-            select new com.emmanuel.venn.persistence.AcceptedTotals(sum(a.amount), count(a))
+            select sum(a.amount) as total, count(a) as loads
             from LoadAttemptEntity a
             where a.customerId = :customerId
-              and a.status = com.emmanuel.venn.persistence.AttemptStatus.ACCEPTED
+              and a.status = :status
               and a.occurredAt >= :from and a.occurredAt < :to
             """)
-    AcceptedTotals acceptedTotals(@Param("customerId") String customerId,
+    AcceptedTotals totalsWithStatus(@Param("customerId") String customerId, @Param("status") AttemptStatus status,
             @Param("from") Instant from, @Param("to") Instant to);
 }

@@ -6,6 +6,7 @@ import com.emmanuel.venn.domain.LoadAttempt;
 import com.emmanuel.venn.domain.LoadAttempts;
 import com.emmanuel.venn.domain.TimeRange;
 import com.emmanuel.venn.domain.Totals;
+import java.math.BigDecimal;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
@@ -26,8 +27,10 @@ class JpaLoadAttempts implements LoadAttempts {
 
     @Override
     public Totals acceptedTotals(String customerId, TimeRange range) {
-        AcceptedTotals accepted = repository.acceptedTotals(customerId, range.start(), range.end());
-        return new Totals(accepted.total(), Math.toIntExact(accepted.count()));
+        AcceptedTotals accepted = repository.totalsWithStatus(customerId, AttemptStatus.ACCEPTED,
+                range.start(), range.end());
+        BigDecimal amount = accepted.getTotal() == null ? BigDecimal.ZERO : accepted.getTotal();
+        return new Totals(amount, Math.toIntExact(accepted.getLoads()));
     }
 
     @Override

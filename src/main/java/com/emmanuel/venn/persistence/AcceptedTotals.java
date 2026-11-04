@@ -2,9 +2,10 @@ package com.emmanuel.venn.persistence;
 
 import java.math.BigDecimal;
 
-record AcceptedTotals(BigDecimal total, long count) {
+/** Query projection. The sum is null when there are no rows. */
+interface AcceptedTotals {
 
-    AcceptedTotals {
-        total = total == null ? BigDecimal.ZERO : total;
-    }
+    BigDecimal getTotal();
+
+    long getLoads();
 }
