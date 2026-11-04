@@ -5,7 +5,7 @@ CREATE TABLE load_attempt (
     amount           DECIMAL(19, 2)            NOT NULL,
     occurred_at      TIMESTAMP WITH TIME ZONE  NOT NULL,
     status           VARCHAR(16)               NOT NULL,
-    rejection_reason VARCHAR(32),
+    rejection_reason VARCHAR(64),
     created_at       TIMESTAMP WITH TIME ZONE  DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT uq_load_attempt_customer_load UNIQUE (customer_id, load_id),
     -- Avoids CHECK ... IN (...): H2 2.4 fails to evaluate it once the creating Flyway connection closes.

@@ -4,8 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.emmanuel.venn.domain.InvalidLoadException;
-import com.emmanuel.venn.domain.VelocityLimitPolicy;
-import com.emmanuel.venn.domain.VelocityLimits;
+import com.emmanuel.venn.domain.TaskRules;
 import com.emmanuel.venn.service.InMemoryLoadAttempts;
 import com.emmanuel.venn.service.LoadService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -19,7 +18,7 @@ class LoadHandlerTest {
     private final InMemoryLoadAttempts store = new InMemoryLoadAttempts();
     private final LoadHandler handler = new LoadHandler(
             new LoadService(store,
-                    new VelocityLimitPolicy(new VelocityLimits(new BigDecimal("5000"), new BigDecimal("20000"), 3)),
+                    TaskRules.policy(),
                     new SimpleMeterRegistry()),
             Validation.buildDefaultValidatorFactory().getValidator());
 

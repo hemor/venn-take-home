@@ -1,6 +1,5 @@
 package com.emmanuel.venn.persistence;
 
-import com.emmanuel.venn.domain.RejectionReason;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -36,14 +35,13 @@ class LoadAttemptEntity {
     @Column(nullable = false)
     private AttemptStatus status;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "rejection_reason")
-    private RejectionReason rejectionReason;
+    private String rejectionReason;
 
     protected LoadAttemptEntity() {}
 
     LoadAttemptEntity(String loadId, String customerId, BigDecimal amount, Instant occurredAt,
-            AttemptStatus status, RejectionReason rejectionReason) {
+            AttemptStatus status, String rejectionReason) {
         this.loadId = loadId;
         this.customerId = customerId;
         this.amount = amount;

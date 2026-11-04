@@ -2,10 +2,10 @@ package com.emmanuel.venn.persistence;
 
 import com.emmanuel.venn.domain.Decision;
 import com.emmanuel.venn.domain.DuplicateLoadException;
-import com.emmanuel.venn.domain.LimitWindows;
 import com.emmanuel.venn.domain.LoadAttempt;
 import com.emmanuel.venn.domain.LoadAttempts;
-import com.emmanuel.venn.domain.PriorActivity;
+import com.emmanuel.venn.domain.TimeRange;
+import com.emmanuel.venn.domain.Totals;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
@@ -25,10 +25,9 @@ class JpaLoadAttempts implements LoadAttempts {
     }
 
     @Override
-    public PriorActivity acceptedActivity(String customerId, LimitWindows windows) {
-        AcceptedTotals day = repository.acceptedTotals(customerId, windows.dayStart(), windows.dayEnd());
-        AcceptedTotals week = repository.acceptedTotals(customerId, windows.weekStart(), windows.weekEnd());
-        return new PriorActivity(day.total(), week.total(), Math.toIntExact(day.count()));
+    public Totals acceptedTotals(String customerId, TimeRange range) {
+        AcceptedTotals accepted = repository.acceptedTotals(customerId, range.start(), range.end());
+        return new Totals(accepted.total(), Math.toIntExact(accepted.count()));
     }
 
     @Override

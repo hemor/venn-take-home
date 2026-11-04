@@ -4,9 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.emmanuel.venn.domain.Decision;
 import com.emmanuel.venn.domain.LoadAttempt;
-import com.emmanuel.venn.domain.RejectionReason;
-import com.emmanuel.venn.domain.VelocityLimitPolicy;
-import com.emmanuel.venn.domain.VelocityLimits;
+import com.emmanuel.venn.domain.TaskRules;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
@@ -21,7 +19,7 @@ class LoadServiceTest {
     private final InMemoryLoadAttempts store = new InMemoryLoadAttempts();
     private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
     private final LoadService service = new LoadService(store,
-            new VelocityLimitPolicy(new VelocityLimits(new BigDecimal("5000"), new BigDecimal("20000"), 3)),
+            TaskRules.policy(),
             meters);
 
     private static LoadAttempt load(String loadId, String customerId, String amount, Instant time) {
@@ -45,8 +43,8 @@ class LoadServiceTest {
     void rejectsLoadOverDailyAmountAndStoresReason() {
         Optional<Decision> decision = service.process(load("1", "A", "5000.01", MONDAY));
 
-        assertThat(decision).contains(Decision.rejected(RejectionReason.DAILY_AMOUNT_EXCEEDED));
-        assertThat(store.stored.get(0).decision().rejectionReason()).isEqualTo(RejectionReason.DAILY_AMOUNT_EXCEEDED);
+        assertThat(decision).contains(Decision.rejected("DAILY_AMOUNT_EXCEEDED"));
+        assertThat(store.stored.get(0).decision().rejectionReason()).isEqualTo("DAILY_AMOUNT_EXCEEDED");
     }
 
     @Test
@@ -54,7 +52,7 @@ class LoadServiceTest {
         service.process(load("1", "A", "3000.00", MONDAY));
 
         assertThat(service.process(load("2", "A", "3000.00", MONDAY.plusSeconds(60))))
-                .contains(Decision.rejected(RejectionReason.DAILY_AMOUNT_EXCEEDED));
+                .contains(Decision.rejected("DAILY_AMOUNT_EXCEEDED"));
     }
 
     @Test
@@ -64,7 +62,7 @@ class LoadServiceTest {
         service.process(load("3", "A", "400.00", MONDAY.plusSeconds(2)));
 
         assertThat(service.process(load("4", "A", "400.00", MONDAY.plusSeconds(3))))
-                .contains(Decision.rejected(RejectionReason.DAILY_COUNT_EXCEEDED));
+                .contains(Decision.rejected("DAILY_COUNT_EXCEEDED"));
     }
 
     @Test
@@ -89,7 +87,7 @@ class LoadServiceTest {
         }
 
         assertThat(service.process(load("x", "A", "1.00", MONDAY.plusSeconds(4 * 86_400L))))
-                .contains(Decision.rejected(RejectionReason.WEEKLY_AMOUNT_EXCEEDED));
+                .contains(Decision.rejected("WEEKLY_AMOUNT_EXCEEDED"));
     }
 
     @Test

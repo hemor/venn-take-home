@@ -21,7 +21,16 @@ logging:
     correlation: "[%X{correlationId:-}] "
 
 velocity:
-  limits:
-    daily-amount: 5000
-    weekly-amount: 20000
-    daily-count: 3
+  rules:
+    - name: DAILY_COUNT_EXCEEDED
+      window: DAY
+      metric: COUNT
+      max: 3
+    - name: DAILY_AMOUNT_EXCEEDED
+      window: DAY
+      metric: AMOUNT
+      max: 5000
+    - name: WEEKLY_AMOUNT_EXCEEDED
+      window: WEEK
+      metric: AMOUNT
+      max: 20000

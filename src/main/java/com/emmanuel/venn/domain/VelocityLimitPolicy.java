@@ -1,25 +1,37 @@
 package com.emmanuel.venn.domain;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class VelocityLimitPolicy {
 
-    private final VelocityLimits limits;
+    private final List<VelocityRule> rules;
 
-    public VelocityLimitPolicy(VelocityLimits limits) {
-        this.limits = limits;
+    public VelocityLimitPolicy(List<VelocityRule> rules) {
+        long distinctNames = rules.stream().map(VelocityRule::name).distinct().count();
+        if (distinctNames != rules.size()) {
+            throw new IllegalArgumentException("rule names must be unique");
+        }
+        this.rules = List.copyOf(rules);
     }
 
-    public Optional<RejectionReason> evaluate(BigDecimal amount, PriorActivity prior) {
-        if (prior.dailyCount() + 1 > limits.dailyCount()) {
-            return Optional.of(RejectionReason.DAILY_COUNT_EXCEEDED);
-        }
-        if (prior.dailyTotal().add(amount).compareTo(limits.dailyAmount()) > 0) {
-            return Optional.of(RejectionReason.DAILY_AMOUNT_EXCEEDED);
-        }
-        if (prior.weeklyTotal().add(amount).compareTo(limits.weeklyAmount()) > 0) {
-            return Optional.of(RejectionReason.WEEKLY_AMOUNT_EXCEEDED);
+    public List<VelocityRule> rules() {
+        return rules;
+    }
+
+    /** @return the name of the first configured rule the load would break, or empty if it is allowed */
+    public Optional<String> evaluate(BigDecimal amount, Instant time, ActivityLookup activity) {
+        Map<TimeRange, Totals> priorByRange = new HashMap<>();
+        for (VelocityRule rule : rules) {
+            TimeRange range = rule.window().rangeContaining(time);
+            Totals prior = priorByRange.computeIfAbsent(range, activity::acceptedWithin);
+            if (rule.isExceededBy(prior, amount)) {
+                return Optional.of(rule.name());
+            }
         }
         return Optional.empty();
     }

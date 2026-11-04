@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.emmanuel.venn.domain.Decision;
 import com.emmanuel.venn.domain.DuplicateLoadException;
-import com.emmanuel.venn.domain.LimitWindows;
+import com.emmanuel.venn.domain.TimeRange;
+import com.emmanuel.venn.domain.Totals;
+import com.emmanuel.venn.domain.WindowType;
 import com.emmanuel.venn.domain.LoadAttempt;
-import com.emmanuel.venn.domain.PriorActivity;
-import com.emmanuel.venn.domain.RejectionReason;
 import java.math.BigDecimal;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 class JpaLoadAttemptsTest {
 
     private static final Instant WEDNESDAY_NOON = Instant.parse("2018-01-03T12:00:00Z");
-    private static final LimitWindows WEDNESDAY = LimitWindows.containing(WEDNESDAY_NOON);
+    private static final TimeRange DAY = WindowType.DAY.rangeContaining(WEDNESDAY_NOON);
+    private static final TimeRange WEEK = WindowType.WEEK.rangeContaining(WEDNESDAY_NOON);
 
     @Autowired
     private JpaLoadAttempts attempts;
@@ -42,7 +43,7 @@ class JpaLoadAttemptsTest {
 
     @Test
     void remembersRejectedAttemptsToo() {
-        attempts.save(load("1", "A", "9999.00", WEDNESDAY_NOON), Decision.rejected(RejectionReason.DAILY_AMOUNT_EXCEEDED));
+        attempts.save(load("1", "A", "9999.00", WEDNESDAY_NOON), Decision.rejected("DAILY_AMOUNT_EXCEEDED"));
 
         assertThat(attempts.exists("A", "1")).isTrue();
     }
@@ -73,66 +74,63 @@ class JpaLoadAttemptsTest {
 
     @Test
     void reportsNoActivityForUnknownCustomer() {
-        assertThat(attempts.acceptedActivity("A", WEDNESDAY)).isEqualTo(PriorActivity.NONE);
+        assertThat(attempts.acceptedTotals("A", DAY)).isEqualTo(Totals.NONE);
     }
 
     @Test
-    void sumsAcceptedLoadsWithinDayAndWeek() {
+    void sumsAndCountsAcceptedLoadsWithinRange() {
         attempts.save(load("1", "A", "100.50", WEDNESDAY_NOON), Decision.accepted());
         attempts.save(load("2", "A", "200.25", WEDNESDAY_NOON.plusSeconds(60)), Decision.accepted());
 
-        PriorActivity activity = attempts.acceptedActivity("A", WEDNESDAY);
+        Totals day = attempts.acceptedTotals("A", DAY);
 
-        assertThat(activity.dailyTotal()).isEqualByComparingTo("300.75");
-        assertThat(activity.weeklyTotal()).isEqualByComparingTo("300.75");
-        assertThat(activity.dailyCount()).isEqualTo(2);
+        assertThat(day.amount()).isEqualByComparingTo("300.75");
+        assertThat(day.count()).isEqualTo(2);
+        assertThat(attempts.acceptedTotals("A", WEEK).amount()).isEqualByComparingTo("300.75");
     }
 
     @Test
     void ignoresRejectedLoads() {
         attempts.save(load("1", "A", "100.00", WEDNESDAY_NOON), Decision.accepted());
-        attempts.save(load("2", "A", "9000.00", WEDNESDAY_NOON), Decision.rejected(RejectionReason.DAILY_AMOUNT_EXCEEDED));
+        attempts.save(load("2", "A", "9000.00", WEDNESDAY_NOON), Decision.rejected("DAILY_AMOUNT_EXCEEDED"));
 
-        PriorActivity activity = attempts.acceptedActivity("A", WEDNESDAY);
+        Totals day = attempts.acceptedTotals("A", DAY);
 
-        assertThat(activity.dailyTotal()).isEqualByComparingTo("100.00");
-        assertThat(activity.dailyCount()).isEqualTo(1);
+        assertThat(day.amount()).isEqualByComparingTo("100.00");
+        assertThat(day.count()).isEqualTo(1);
     }
 
     @Test
     void ignoresOtherCustomers() {
         attempts.save(load("1", "B", "100.00", WEDNESDAY_NOON), Decision.accepted());
 
-        assertThat(attempts.acceptedActivity("A", WEDNESDAY)).isEqualTo(PriorActivity.NONE);
+        assertThat(attempts.acceptedTotals("A", DAY)).isEqualTo(Totals.NONE);
     }
 
     @Test
     void earlierDayInSameWeekCountsTowardWeekOnly() {
         attempts.save(load("1", "A", "400.00", Instant.parse("2018-01-02T10:00:00Z")), Decision.accepted());
 
-        PriorActivity activity = attempts.acceptedActivity("A", WEDNESDAY);
-
-        assertThat(activity.dailyTotal()).isEqualByComparingTo("0");
-        assertThat(activity.dailyCount()).isZero();
-        assertThat(activity.weeklyTotal()).isEqualByComparingTo("400.00");
+        assertThat(attempts.acceptedTotals("A", DAY)).isEqualTo(Totals.NONE);
+        assertThat(attempts.acceptedTotals("A", WEEK).amount()).isEqualByComparingTo("400.00");
     }
 
     @Test
     void previousWeekIsExcluded() {
-        attempts.save(load("1", "A", "400.00", Instant.parse("2018-01-01T00:00:00Z").minusSeconds(1)), Decision.accepted());
+        attempts.save(load("1", "A", "400.00", WEEK.start().minusSeconds(1)), Decision.accepted());
 
-        assertThat(attempts.acceptedActivity("A", WEDNESDAY)).isEqualTo(PriorActivity.NONE);
+        assertThat(attempts.acceptedTotals("A", WEEK)).isEqualTo(Totals.NONE);
     }
 
     @Test
-    void windowStartIsInclusiveAndEndIsExclusive() {
-        attempts.save(load("1", "A", "10.00", WEDNESDAY.dayStart()), Decision.accepted());
-        attempts.save(load("2", "A", "20.00", WEDNESDAY.dayEnd()), Decision.accepted());
+    void rangeStartIsInclusiveAndEndIsExclusive() {
+        attempts.save(load("1", "A", "10.00", DAY.start()), Decision.accepted());
+        attempts.save(load("2", "A", "20.00", DAY.end()), Decision.accepted());
 
-        PriorActivity activity = attempts.acceptedActivity("A", WEDNESDAY);
+        Totals day = attempts.acceptedTotals("A", DAY);
 
-        assertThat(activity.dailyTotal()).isEqualByComparingTo("10.00");
-        assertThat(activity.dailyCount()).isEqualTo(1);
-        assertThat(activity.weeklyTotal()).isEqualByComparingTo("30.00");
+        assertThat(day.amount()).isEqualByComparingTo("10.00");
+        assertThat(day.count()).isEqualTo(1);
+        assertThat(attempts.acceptedTotals("A", WEEK).amount()).isEqualByComparingTo("30.00");
     }
 }

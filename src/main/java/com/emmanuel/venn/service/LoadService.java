@@ -2,10 +2,8 @@ package com.emmanuel.venn.service;
 
 import com.emmanuel.venn.domain.Decision;
 import com.emmanuel.venn.domain.DuplicateLoadException;
-import com.emmanuel.venn.domain.LimitWindows;
 import com.emmanuel.venn.domain.LoadAttempt;
 import com.emmanuel.venn.domain.LoadAttempts;
-import com.emmanuel.venn.domain.PriorActivity;
 import com.emmanuel.venn.domain.VelocityLimitPolicy;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Optional;
@@ -34,8 +32,9 @@ public class LoadService {
         if (attempts.exists(attempt.customerId(), attempt.loadId())) {
             return ignoreDuplicate(attempt);
         }
-        PriorActivity prior = attempts.acceptedActivity(attempt.customerId(), LimitWindows.containing(attempt.time()));
-        Decision decision = policy.evaluate(attempt.amount(), prior)
+        Decision decision = policy
+                .evaluate(attempt.amount(), attempt.time(),
+                        range -> attempts.acceptedTotals(attempt.customerId(), range))
                 .map(Decision::rejected)
                 .orElseGet(Decision::accepted);
         try {
@@ -61,6 +60,6 @@ public class LoadService {
         }
         log.info("Rejected load {} for customer {}: {}", attempt.loadId(), attempt.customerId(),
                 decision.rejectionReason());
-        meters.counter(METRIC, "outcome", "rejected", "reason", decision.rejectionReason().name()).increment();
+        meters.counter(METRIC, "outcome", "rejected", "reason", decision.rejectionReason()).increment();
     }
 }

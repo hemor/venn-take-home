@@ -1,13 +1,13 @@
 package com.emmanuel.venn.domain;
 
-/** Accepted when there is no rejection reason. */
-public record Decision(RejectionReason rejectionReason) {
+/** Accepted when there is no rejection reason. The reason is the name of the rule that was broken. */
+public record Decision(String rejectionReason) {
 
     public static Decision accepted() {
         return new Decision(null);
     }
 
-    public static Decision rejected(RejectionReason reason) {
+    public static Decision rejected(String reason) {
         return new Decision(reason);
     }
 

@@ -2,12 +2,11 @@ package com.emmanuel.venn.service;
 
 import com.emmanuel.venn.domain.Decision;
 import com.emmanuel.venn.domain.DuplicateLoadException;
-import com.emmanuel.venn.domain.LimitWindows;
 import com.emmanuel.venn.domain.LoadAttempt;
 import com.emmanuel.venn.domain.LoadAttempts;
-import com.emmanuel.venn.domain.PriorActivity;
+import com.emmanuel.venn.domain.TimeRange;
+import com.emmanuel.venn.domain.Totals;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,15 +23,15 @@ public class InMemoryLoadAttempts implements LoadAttempts {
     }
 
     @Override
-    public PriorActivity acceptedActivity(String customerId, LimitWindows windows) {
+    public Totals acceptedTotals(String customerId, TimeRange range) {
         List<LoadAttempt> accepted = stored.stream()
                 .filter(s -> s.decision().isAccepted() && s.attempt().customerId().equals(customerId))
                 .map(Stored::attempt)
+                .filter(a -> range.contains(a.time()))
                 .toList();
-        return new PriorActivity(
-                total(accepted, windows.dayStart(), windows.dayEnd()),
-                total(accepted, windows.weekStart(), windows.weekEnd()),
-                (int) accepted.stream().filter(a -> within(a, windows.dayStart(), windows.dayEnd())).count());
+        return new Totals(
+                accepted.stream().map(LoadAttempt::amount).reduce(BigDecimal.ZERO, BigDecimal::add),
+                accepted.size());
     }
 
     @Override
@@ -46,14 +45,5 @@ public class InMemoryLoadAttempts implements LoadAttempts {
 
     private static boolean matches(Stored s, String customerId, String loadId) {
         return s.attempt().customerId().equals(customerId) && s.attempt().loadId().equals(loadId);
-    }
-
-    private static boolean within(LoadAttempt a, Instant from, Instant to) {
-        return !a.time().isBefore(from) && a.time().isBefore(to);
-    }
-
-    private static BigDecimal total(List<LoadAttempt> attempts, Instant from, Instant to) {
-        return attempts.stream().filter(a -> within(a, from, to)).map(LoadAttempt::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }
