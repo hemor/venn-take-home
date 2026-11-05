@@ -88,7 +88,7 @@ class VelocityLimitPolicyTest {
     @Test
     void supportsRulesBeyondTheTaskLimits() {
         List<VelocityRule> rules = List.of(
-                new VelocityRule("WEEKLY_COUNT_LIMIT", WindowType.WEEK, Metric.COUNT, new BigDecimal("2"), null));
+                new VelocityRule("WEEKLY_COUNT_LIMIT", WindowType.WEEK, new Limit.MaxLoads(2)));
 
         assertThat(evaluate(rules, "1.00", Totals.none(CAD), totals("2.00", 2))).contains("WEEKLY_COUNT_LIMIT");
         assertThat(evaluate(rules, "1.00", Totals.none(CAD), totals("1.00", 1))).isEmpty();
@@ -132,8 +132,8 @@ class VelocityLimitPolicyTest {
     @Test
     void appliesEachAmountRuleOnlyToLoadsInItsOwnCurrency() {
         List<VelocityRule> rules = List.of(
-                new VelocityRule("DAILY_AMOUNT_CAD", WindowType.DAY, Metric.AMOUNT, new BigDecimal("100"), CAD),
-                new VelocityRule("DAILY_AMOUNT_USD", WindowType.DAY, Metric.AMOUNT, new BigDecimal("50"), USD));
+                new VelocityRule("DAILY_AMOUNT_CAD", WindowType.DAY, new Limit.MaxAmount(cad("100"))),
+                new VelocityRule("DAILY_AMOUNT_USD", WindowType.DAY, new Limit.MaxAmount(Money.ofMajor(new BigDecimal("50"), USD))));
         VelocityLimitPolicy policy = new VelocityLimitPolicy(rules);
         ActivityLookup nothingYet = (range, currency) -> Totals.none(currency);
 

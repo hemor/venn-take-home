@@ -1,9 +1,9 @@
 package com.emmanuel.venn.velocity;
 
-import static com.emmanuel.venn.money.TestMoney.CAD;
+import static com.emmanuel.venn.money.TestMoney.cad;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.math.BigDecimal;
+import com.emmanuel.venn.money.Money;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
@@ -24,8 +24,8 @@ class VelocityConfigTest {
                 "velocity.rules[1].max=250.50",
                 "velocity.rules[1].currency=CAD")
                 .run(context -> assertThat(context.getBean(VelocityLimitPolicy.class).rules()).containsExactly(
-                        new VelocityRule("PER_MINUTE_COUNT", WindowType.DAY, Metric.COUNT, new BigDecimal("2"), null),
-                        new VelocityRule("WEEKLY_CAP", WindowType.WEEK, Metric.AMOUNT, new BigDecimal("250.50"), CAD)));
+                        new VelocityRule("PER_MINUTE_COUNT", WindowType.DAY, new Limit.MaxLoads(2)),
+                        new VelocityRule("WEEKLY_CAP", WindowType.WEEK, new Limit.MaxAmount(cad("250.50")))));
     }
 
     @Test
@@ -84,5 +84,41 @@ class VelocityConfigTest {
                 "velocity.rules[0].metric=AMOUNT", "velocity.rules[0].max=5")
                 .run(context -> assertThat(context).hasFailed()
                         .getFailure().rootCause().hasMessageContaining("needs a currency"));
+    }
+
+    @Test
+    void failsStartupOnAFractionalLoadLimit() {
+        runner.withPropertyValues(
+                "velocity.rules[0].name=BAD", "velocity.rules[0].window=DAY",
+                "velocity.rules[0].metric=COUNT", "velocity.rules[0].max=2.5")
+                .run(context -> assertThat(context).hasFailed()
+                        .getFailure().rootCause().hasMessageContaining("rule BAD: max must be a whole number"));
+    }
+
+    @Test
+    void failsStartupWhenALoadLimitHasACurrency() {
+        runner.withPropertyValues(
+                "velocity.rules[0].name=BAD", "velocity.rules[0].window=DAY",
+                "velocity.rules[0].metric=COUNT", "velocity.rules[0].max=2", "velocity.rules[0].currency=CAD")
+                .run(context -> assertThat(context).hasFailed()
+                        .getFailure().rootCause().hasMessageContaining("a COUNT rule has no currency"));
+    }
+
+    @Test
+    void failsStartupOnAnAmountFinerThanTheCurrencyAllows() {
+        runner.withPropertyValues(
+                "velocity.rules[0].name=BAD", "velocity.rules[0].window=DAY",
+                "velocity.rules[0].metric=AMOUNT", "velocity.rules[0].max=1.005", "velocity.rules[0].currency=CAD")
+                .run(context -> assertThat(context).hasFailed()
+                        .getFailure().rootCause().hasMessageContaining("CAD"));
+    }
+
+    @Test
+    void readsAmountsInTheDecimalPlacesOfTheirCurrency() {
+        runner.withPropertyValues(
+                "velocity.rules[0].name=YEN", "velocity.rules[0].window=DAY",
+                "velocity.rules[0].metric=AMOUNT", "velocity.rules[0].max=500000", "velocity.rules[0].currency=JPY")
+                .run(context -> assertThat(context.getBean(VelocityLimitPolicy.class).rules().get(0).limit())
+                        .isEqualTo(new Limit.MaxAmount(new Money(500000, java.util.Currency.getInstance("JPY")))));
     }
 }

@@ -44,14 +44,6 @@ class MoneyTest {
     }
 
     @Test
-    void showsMajorUnitsWithTheDecimalPlacesOfTheCurrency() {
-        assertThat(new Money(12345, CAD).toMajor()).isEqualByComparingTo("123.45");
-        assertThat(new Money(12345, CAD).toMajor().scale()).isEqualTo(2);
-        assertThat(new Money(500, JPY).toMajor().scale()).isZero();
-        assertThat(new Money(1234, KWD).toMajor()).isEqualByComparingTo("1.234");
-    }
-
-    @Test
     void addsAmountsOfTheSameCurrency() {
         assertThat(new Money(100, CAD).plus(new Money(250, CAD))).isEqualTo(new Money(350, CAD));
     }

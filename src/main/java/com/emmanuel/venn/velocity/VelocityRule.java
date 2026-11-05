@@ -1,14 +1,12 @@
 package com.emmanuel.venn.velocity;
 
 import com.emmanuel.venn.money.Money;
-import java.math.BigDecimal;
-import java.util.Currency;
 
 /**
- * At most {@code max} per {@code window}: a number of loads, or an amount in {@code currency}. The name is the
- * rejection reason. An amount rule only applies to loads in its currency; a count rule counts every load.
+ * At most one {@link Limit} per {@code window}. The name is the rejection reason. An amount limit only applies to
+ * loads in its currency; a load limit counts every load.
  */
-public record VelocityRule(String name, WindowType window, Metric metric, BigDecimal max, Currency currency) {
+public record VelocityRule(String name, WindowType window, Limit limit) {
 
     public static final int MAX_NAME_LENGTH = 64;
 
@@ -19,32 +17,16 @@ public record VelocityRule(String name, WindowType window, Metric metric, BigDec
         if (name.length() > MAX_NAME_LENGTH) {
             throw new IllegalArgumentException("rule name must be at most " + MAX_NAME_LENGTH + " characters");
         }
-        if (window == null || metric == null) {
-            throw new IllegalArgumentException("rule " + name + " needs a window and a metric");
-        }
-        if (max == null || max.signum() <= 0) {
-            throw new IllegalArgumentException("rule " + name + ": max must be positive");
-        }
-        if (metric == Metric.COUNT) {
-            if (max.stripTrailingZeros().scale() > 0) {
-                throw new IllegalArgumentException("rule " + name + ": max must be a whole number for a COUNT rule");
-            }
-            if (currency != null) {
-                throw new IllegalArgumentException("rule " + name + ": a COUNT rule has no currency");
-            }
-        } else {
-            if (currency == null) {
-                throw new IllegalArgumentException("rule " + name + ": an AMOUNT rule needs a currency");
-            }
-            Money.ofMajor(max, currency);
+        if (window == null || limit == null) {
+            throw new IllegalArgumentException("rule " + name + " needs a window and a limit");
         }
     }
 
     public boolean isExceededBy(Totals prior, Money amount) {
-        return switch (metric) {
-            case AMOUNT -> amount.currency().equals(currency)
-                    && prior.amount().plus(amount).isGreaterThan(Money.ofMajor(max, currency));
-            case COUNT -> prior.count() + 1L > max.longValueExact();
+        return switch (limit) {
+            case Limit.MaxLoads loads -> prior.count() + 1L > loads.max();
+            case Limit.MaxAmount cap -> amount.currency().equals(cap.max().currency())
+                    && prior.amount().plus(amount).isGreaterThan(cap.max());
         };
     }
 }

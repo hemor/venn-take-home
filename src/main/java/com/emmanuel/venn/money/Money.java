@@ -30,10 +30,6 @@ public record Money(long minorUnits, Currency currency) {
         }
     }
 
-    public BigDecimal toMajor() {
-        return BigDecimal.valueOf(minorUnits, decimalPlaces(currency));
-    }
-
     public Money plus(Money other) {
         requireSameCurrency(other);
         return new Money(Math.addExact(minorUnits, other.minorUnits), currency);
