@@ -89,7 +89,7 @@ Docker files are included (`Dockerfile`, `compose.yaml` with Prometheus). They h
 - Service tests against an in-memory fake of the persistence port.
 - Repository tests against H2 through the real Flyway migration.
 - Controller tests for status codes and `ProblemDetail` bodies.
-- Concurrency tests: simultaneous loads for one customer never exceed the daily count or amount, and a repeated load is decided once.
+- Concurrency tests: simultaneous loads for one customer never exceed the daily count or amount, and a repeated load is decided once. A multi-instance test starts an H2 TCP server and two application contexts sharing it, and checks the same limits across both. It fails if the row lock is removed.
 - End-to-end batch tests: a hand-written edge-case fixture, and a diff of the full task input against Venn's expected output. The second one needs the task files in `question/` (not committed) and skips itself otherwise.
 
 ## Design
@@ -137,7 +137,7 @@ For another database, set `SPRING_DATASOURCE_URL` along with the username and pa
 
 ## Known limitations and what I would do next
 
-- **Concurrency.** Decisions for one customer are serialized twice: by an in-process queue per customer, so waiting requests are parked threads and not pooled connections, and by a row lock in `customer_lock`, so the check and the insert are atomic across instances. The cross-instance guarantee needs a database the instances share, which the default in-memory H2 is not. I would add a lock timeout and, only if contention is measured, a distributed lock such as Redis.
+- **Concurrency.** Decisions for one customer are serialized twice: by an in-process queue per customer, so waiting requests are parked threads and not pooled connections, and by a row lock in `customer_lock`, so the check and the insert are atomic across instances. The cross-instance guarantee needs a database the instances share, which the default in-memory H2 is not. Point `SPRING_DATASOURCE_URL` at an H2 server (`jdbc:h2:tcp://host:9092/mem:venn;DB_CLOSE_DELAY=-1`) or Postgres. I would add a lock timeout and, only if contention is measured, a distributed lock such as Redis.
 - **Retries.** A repeated load ID gets a `204`, so the original decision is not replayed. I would return the stored decision, or a `409` when the payload differs.
 - **Authentication.** None. I would add an OAuth2 resource server.
 - **Database.** In-memory H2 is fine for the task. In production I would use Postgres and run the repository tests against it with Testcontainers.
