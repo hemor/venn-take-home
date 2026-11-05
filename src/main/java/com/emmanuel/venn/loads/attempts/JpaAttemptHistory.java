@@ -25,6 +25,8 @@ class JpaAttemptHistory implements AttemptHistory {
         this.repository = repository;
         this.locks = locks;
         this.transaction = new TransactionTemplate(transactionManager);
+        // The totals must see the previous lock holder's commit, which a snapshot taken before the wait would not.
+        this.transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
         this.separateTransaction = new TransactionTemplate(transactionManager);
         this.separateTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
