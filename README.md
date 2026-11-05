@@ -32,8 +32,8 @@ velocity:
     - name: DAILY_AMOUNT_LIMIT
       window: DAY
       metric: AMOUNT
-      max: 5000                    # in major units of the currency below
-      currency: CAD                # required for AMOUNT, not allowed for COUNT
+      max: 5000                    # in major units, such as dollars
+      # currency: CAD             # optional, AMOUNT only; limits this rule to loads in that currency
 ```
 
 Rules are checked in the order listed and the first one broken is the reason reported. Add, remove or change entries to change the limits, for example a weekly cap of 10 loads is one more entry. To change them without rebuilding, put the `velocity` block in a separate file and start the app with `--spring.config.additional-location=file:./rules.yaml`. A list in the external file replaces the built-in one. Startup fails if there are no rules, a rule is invalid (blank name, non-positive max, fractional count) or two rules share a name.
@@ -46,13 +46,15 @@ Amounts are stored as an integer count of the smallest unit (cents for CAD) in `
 
 The task's input has no currency, so a `$` amount is read as **CAD**. That is an assumption of mine, since `$` is also USD, AUD and others, and it lives in one constant in `LoadHandler`.
 
-An amount rule applies only to loads in its own currency, and a count rule counts loads in every currency. The totals query sums one currency and counts all of them in a single statement.
+An amount rule with a `currency` applies only to loads in that currency. Without one, which is how the default rules are written, it applies to every load and compares plain numbers in the currency of the load being checked, with no conversion. That is exact while everything is CAD and not meaningful with several currencies. A count rule counts loads in every currency. The totals query sums one currency and counts all of them in a single statement.
+
+The open question is the policy for several currencies: one limit with every load converted to CAD first, separate limits per currency, or both. Converting needs exchange rates, which I have not built, and I would not pick between them without the product owner. A count rule cannot be limited to a currency yet.
 
 How much work another currency is, as tested:
 
-- **Database, money arithmetic, limits:** no code. `AdditionalCurrencyTest` adds USD and JPY rules in configuration only and checks that each has its own limit, that JPY is limited in whole units, that the count limit spans currencies, and that minor units and currency are stored correctly. `JpaAttemptHistoryTest` checks the per-currency totals against the real schema for CAD, USD, JPY and KWD.
+- **Database, money arithmetic, per-currency limits:** no code. `AdditionalCurrencyTest` adds USD and JPY rules in configuration only and checks that each has its own limit, that JPY is limited in whole units, that the count limit spans currencies, and that minor units and currency are stored correctly. `JpaAttemptHistoryTest` checks the per-currency totals against the real schema for CAD, USD, JPY and KWD.
 - **Accepting it over the API:** a few lines, not yet done: an optional `currency` field in `LoadRequest` and its mapping in `LoadHandler`, defaulting to CAD. Until then no non-CAD load can enter.
-- **Not done, on purpose:** a currency with no amount rule currently has no amount limit, so before exposing one the handler needs an allow-list. Whether limits are per currency, or one limit with exchange rates, is a product decision I did not want to guess.
+- **Not done, on purpose:** exchange rates, and an allow-list of accepted currencies in the handler before one is exposed. A load in a currency that only has currency-specific limits for other currencies has no amount limit.
 
 Interpretations checked against the expected output in the task:
 

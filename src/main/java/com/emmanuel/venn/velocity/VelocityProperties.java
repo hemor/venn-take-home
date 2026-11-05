@@ -1,6 +1,5 @@
 package com.emmanuel.venn.velocity;
 
-import com.emmanuel.venn.money.Money;
 import java.math.BigDecimal;
 import java.util.Currency;
 import java.util.List;
@@ -26,16 +25,11 @@ record VelocityProperties(List<RuleProperties> rules) {
             return switch (metric) {
                 case COUNT -> {
                     if (currency != null) {
-                        throw new IllegalArgumentException("a COUNT rule has no currency");
+                        throw new IllegalArgumentException("a COUNT rule cannot have a currency yet");
                     }
                     yield new Limit.MaxLoads(wholeNumber());
                 }
-                case AMOUNT -> {
-                    if (currency == null) {
-                        throw new IllegalArgumentException("an AMOUNT rule needs a currency");
-                    }
-                    yield new Limit.MaxAmount(Money.ofMajor(max, currencyOf()));
-                }
+                case AMOUNT -> new Limit.MaxAmount(max, currency == null ? null : currencyOf());
             };
         }
 

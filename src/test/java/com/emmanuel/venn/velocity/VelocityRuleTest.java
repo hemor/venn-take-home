@@ -1,5 +1,6 @@
 package com.emmanuel.venn.velocity;
 
+import static com.emmanuel.venn.money.TestMoney.CAD;
 import static com.emmanuel.venn.money.TestMoney.cad;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -14,7 +15,7 @@ class VelocityRuleTest {
     private static final Currency USD = Currency.getInstance("USD");
 
     private static VelocityRule amountRule(String max) {
-        return new VelocityRule("DAILY_AMOUNT", WindowType.DAY, new Limit.MaxAmount(cad(max)));
+        return new VelocityRule("DAILY_AMOUNT", WindowType.DAY, new Limit.MaxAmount(new BigDecimal(max), CAD));
     }
 
     private static VelocityRule countRule(int max) {
@@ -60,10 +61,20 @@ class VelocityRuleTest {
     @Test
     void anAmountRuleInAnotherCurrencyAppliesToLoadsInThatCurrency() {
         VelocityRule usdRule = new VelocityRule("DAILY_AMOUNT_USD", WindowType.DAY,
-                new Limit.MaxAmount(Money.ofMajor(new BigDecimal("100"), USD)));
+                new Limit.MaxAmount(new BigDecimal("100"), USD));
 
         assertThat(usdRule.isExceededBy(Totals.none(USD), Money.ofMajor(new BigDecimal("100.01"), USD))).isTrue();
         assertThat(usdRule.isExceededBy(Totals.none(USD), Money.ofMajor(new BigDecimal("100.00"), USD))).isFalse();
+    }
+
+    @Test
+    void anAmountRuleWithoutACurrencyAppliesToLoadsInAnyCurrency() {
+        VelocityRule anyCurrency = new VelocityRule("DAILY_AMOUNT", WindowType.DAY,
+                new Limit.MaxAmount(new BigDecimal("5000"), null));
+
+        assertThat(anyCurrency.isExceededBy(Totals.none(CAD), cad("5000.01"))).isTrue();
+        assertThat(anyCurrency.isExceededBy(Totals.none(USD), Money.ofMajor(new BigDecimal("5000.01"), USD))).isTrue();
+        assertThat(anyCurrency.isExceededBy(Totals.none(USD), Money.ofMajor(new BigDecimal("5000"), USD))).isFalse();
     }
 
     @Test
