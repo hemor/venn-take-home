@@ -19,6 +19,10 @@ spring:
         jdbc:
           time_zone: UTC
 
+springdoc:
+  swagger-ui:
+    path: /docs
+
 management:
   endpoints:
     web:

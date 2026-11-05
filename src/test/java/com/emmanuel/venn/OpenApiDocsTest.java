@@ -2,6 +2,7 @@ package com.emmanuel.venn;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,13 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/v1/loads'].post.responses['200']").exists())
                 .andExpect(jsonPath("$.paths['/v1/loads'].post.responses['204']").exists())
                 .andExpect(jsonPath("$.paths['/v1/loads'].post.responses['400']").exists());
+    }
+
+    @Test
+    void servesTheInteractiveDocsAtDocs() throws Exception {
+        mvc.perform(get("/docs"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("/swagger-ui/index.html*"));
     }
 
     @Test
