@@ -89,6 +89,7 @@ Docker files are included (`Dockerfile`, `compose.yaml` with Prometheus). They h
 - Service tests against an in-memory fake of the persistence port.
 - Repository tests against H2 through the real Flyway migration.
 - Controller tests for status codes and `ProblemDetail` bodies.
+- Concurrency tests: simultaneous loads for one customer never exceed the daily count or amount, and a repeated load is decided once.
 - End-to-end batch tests: a hand-written edge-case fixture, and a diff of the full task input against Venn's expected output. The second one needs the task files in `question/` (not committed) and skips itself otherwise.
 
 ## Design
@@ -110,7 +111,7 @@ observability/    cross-cutting logging, such as the correlation ID filter
 - Dependencies point one way: `batch` uses `loads`, `loads` uses `attempts`, `attempts` uses `velocity`, and `velocity` and `observability` use nothing.
 - The controller and the batch runner are thin adapters over one `LoadHandler`, so validation and mapping happen in one place.
 - The rule classes have no Spring or database dependency (only `VelocityConfig` and `VelocityProperties` wire them in), so they are tested without a context.
-- Every attempt is stored with its decision and rejection reason, which doubles as an audit trail. A unique `(customer_id, load_id)` constraint backs duplicate detection and a check constraint ties status to rejection reason.
+- Every attempt is stored with its decision and rejection reason, which doubles as an audit trail. `customer_lock` holds one row per customer, locked while a load is decided. A unique `(customer_id, load_id)` constraint backs duplicate detection and a check constraint ties status to rejection reason.
 - The schema is plain SQL under Flyway, and the service depends on a repository interface, so moving from H2 to Postgres means changing the datasource and the driver.
 - Rules are data (`VelocityRule`) evaluated in order by `VelocityLimitPolicy`. The policy asks for a customer's accepted totals once per distinct window, and stops at the first broken rule.
 
@@ -136,7 +137,8 @@ For another database, set `SPRING_DATASOURCE_URL` along with the username and pa
 
 ## Known limitations and what I would do next
 
-- **Concurrency.** The service checks the limits and then inserts, without locking per customer. Two simultaneous requests for the same customer could both pass. Batch mode is sequential, so it is not affected. In production I would serialize per customer with a row lock or serializable transactions and a retry.
+- **Concurrency.** Decisions for one customer are serialized with a row lock in `customer_lock`, so the check and the insert are atomic across instances sharing a database. Bursts for one customer queue while holding a database connection, so a very hot customer can use up the pool. I would bound that with a lock timeout and an in-process queue per customer in front, and measure before adding a distributed lock such as Redis.
+- **Retries.** A repeated load ID gets a `204`, so the original decision is not replayed. I would return the stored decision, or a `409` when the payload differs.
 - **Authentication.** None. I would add an OAuth2 resource server.
 - **Database.** In-memory H2 is fine for the task. In production I would use Postgres and run the repository tests against it with Testcontainers.
 - **Retention.** Stored attempts only matter for the current week and for duplicate detection, so old rows could be archived.
