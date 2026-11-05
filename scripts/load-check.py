@@ -96,10 +96,15 @@ def identical_request_sent_concurrently():
 
 
 def many_customers_over_the_count_limit():
-    results, stats = burst([load(i, f"mixed{i % 300}") for i in range(3000)], 300)
+    requests = [load(i, f"mixed{i % 300}") for i in range(3000)]
+    results, stats = burst(requests, 300)
+    per_customer = {}
+    for (_, customer, _), result in zip(requests, results):
+        per_customer[customer] = per_customer.get(customer, 0) + (result[0] == 200 and result[1]["accepted"])
     check("3000 loads over 300 customers (10 each, limit 3 a day)",
-          accepted(results) == 900 and statuses(results) == {200: 3000},
-          f"accepted={accepted(results)} (want 900), statuses={statuses(results)}, {stats}")
+          set(per_customer.values()) == {3} and len(per_customer) == 300 and statuses(results) == {200: 3000},
+          f"customers with exactly 3 accepted={sum(v == 3 for v in per_customer.values())} (want 300), "
+          f"accepted={accepted(results)}, statuses={statuses(results)}, {stats}")
 
 
 def hot_customer_among_others():
