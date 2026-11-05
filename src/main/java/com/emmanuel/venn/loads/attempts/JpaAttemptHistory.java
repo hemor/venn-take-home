@@ -36,7 +36,7 @@ class JpaAttemptHistory implements AttemptHistory {
     public <T> T withCustomerLock(String customerId, Supplier<T> action) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException(
-                    "The customer lock must be taken outside a transaction, or waiting holds a second connection");
+                    "The customer lock must be taken outside a transaction, or the caller's connection is held while queued");
         }
         // Waiting here costs a parked thread; waiting on the row lock would hold a pooled connection.
         return customerQueue.withLock(customerId, () -> {
