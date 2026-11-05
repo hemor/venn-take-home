@@ -59,6 +59,13 @@ class JpaAttemptHistoryTest {
     }
 
     @Test
+    void refusesToTakeTheCustomerLockInsideAnotherTransaction() {
+        assertThatThrownBy(() -> attempts.withCustomerLock("A", () -> "never runs"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("transaction");
+    }
+
+    @Test
     void rejectsSecondSaveOfSameCustomerAndLoadId() {
         attempts.save(load("1", "A", "10.00", WEDNESDAY_NOON), Decision.accepted());
 

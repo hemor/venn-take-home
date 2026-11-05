@@ -9,6 +9,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Repository
@@ -18,7 +19,8 @@ class JpaAttemptHistory implements AttemptHistory {
     private final CustomerLockRepository locks;
     private final KeyedLock customerQueue = new KeyedLock();
     private final TransactionTemplate transaction;
-    private final TransactionTemplate separateTransaction;
+
+    private record Outcome<T>(boolean locked, T value) {}
 
     JpaAttemptHistory(LoadAttemptRepository repository, CustomerLockRepository locks,
             PlatformTransactionManager transactionManager) {
@@ -27,32 +29,40 @@ class JpaAttemptHistory implements AttemptHistory {
         this.transaction = new TransactionTemplate(transactionManager);
         // The totals must see the previous lock holder's commit, which a snapshot taken before the wait would not.
         this.transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
-        this.separateTransaction = new TransactionTemplate(transactionManager);
-        this.separateTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     @Override
     public <T> T withCustomerLock(String customerId, Supplier<T> action) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException(
+                    "The customer lock must be taken outside a transaction, or waiting holds a second connection");
+        }
         // Waiting here costs a parked thread; waiting on the row lock would hold a pooled connection.
         return customerQueue.withLock(customerId, () -> {
-            ensureLockRowExists(customerId);
-            return transaction.execute(status -> {
-                locks.lockByCustomerId(customerId);
-                return action.get();
-            });
+            Outcome<T> outcome = lockAndRun(customerId, action);
+            if (!outcome.locked()) {
+                createLockRow(customerId);
+                outcome = lockAndRun(customerId, action);
+            }
+            if (!outcome.locked()) {
+                throw new IllegalStateException("Lock row for customer " + customerId + " is missing after creating it");
+            }
+            return outcome.value();
         });
     }
 
-    // Its own transaction: a unique violation from a concurrent first insert would otherwise poison the caller's.
-    private void ensureLockRowExists(String customerId) {
+    private <T> Outcome<T> lockAndRun(String customerId, Supplier<T> action) {
+        return transaction.execute(status -> locks.lockByCustomerId(customerId)
+                .map(row -> new Outcome<>(true, action.get()))
+                .orElseGet(() -> new Outcome<>(false, null)));
+    }
+
+    // Its own transaction: a unique violation from a concurrent first insert would otherwise poison a caller's.
+    private void createLockRow(String customerId) {
         try {
-            separateTransaction.executeWithoutResult(status -> {
-                if (!locks.existsById(customerId)) {
-                    locks.saveAndFlush(new CustomerLockEntity(customerId));
-                }
-            });
+            transaction.executeWithoutResult(status -> locks.saveAndFlush(new CustomerLockEntity(customerId)));
         } catch (DataIntegrityViolationException e) {
-            // another request created it first
+            // another instance created it first
         }
     }
 
