@@ -5,13 +5,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.servlet.ServletContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -19,6 +23,24 @@ class LoadApiTest {
 
     @Autowired
     private MockMvc mvc;
+
+    private static final class ChunkedPost extends AbstractMockHttpServletRequestBuilder<ChunkedPost> {
+
+        ChunkedPost() {
+            super(HttpMethod.POST);
+            uri("/v1/loads");
+        }
+
+        @Override
+        protected MockHttpServletRequest createServletRequest(ServletContext servletContext) {
+            return new MockHttpServletRequest(servletContext) {
+                @Override
+                public long getContentLengthLong() {
+                    return -1;
+                }
+            };
+        }
+    }
 
     private ResultActions load(String id, String customerId, String amount) throws Exception {
         String body = """
@@ -55,6 +77,17 @@ class LoadApiTest {
                 {"id":"big","customer_id":"api-8","load_amount":"$1.00","time":"2018-01-01T00:00:00Z"}""" + padding;
 
         mvc.perform(post("/v1/loads").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+    }
+
+    @Test
+    void rejectsABodyLargerThanAnyValidLoadEvenWhenItsLengthIsNotDeclared() throws Exception {
+        String body = """
+                {"id":"big","customer_id":"api-10","load_amount":"$1.00","time":"2018-01-01T00:00:00Z"}"""
+                + " ".repeat(20_000);
+
+        mvc.perform(new ChunkedPost().contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isPayloadTooLarge())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
     }

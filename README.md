@@ -95,6 +95,7 @@ curl -X POST localhost:8080/v1/loads -H 'Content-Type: application/json' \
 | `200` `{"id","customer_id","accepted"}` | Decision |
 | `204` | Load ID already seen for this customer, ignored |
 | `400` ProblemDetail | Malformed or invalid request |
+| `413` ProblemDetail | Request body over 8 KB, far larger than any valid load |
 | `500` ProblemDetail | Unexpected error, details are logged and not returned |
 
 Swagger UI is at `/swagger-ui.html` and the OpenAPI spec at `/v3/api-docs`.
@@ -127,12 +128,13 @@ loads/            the fund-load feature: REST controller, request/response contr
 velocity/         the configurable limit engine: VelocityRule, VelocityLimitPolicy, WindowType and
                   their configuration. It knows nothing about loads
 observability/    cross-cutting logging, such as the correlation ID filter
+web/              HTTP filters, such as the request size limit
 money/            exact amounts in minor units with a currency, used by loads and velocity
 ```
 
 - Packages are grouped by feature, in the style of Spring PetClinic, and split only where there is a distinct concern. A package sits at the top level only if it is a feature, an engine no single feature owns (`velocity`) or a cross-cutting concern (`observability`). Anything owned by one feature lives inside it.
 - A sub-package exists to hide internals behind a small public surface: `attempts` hides JPA and `batch` hides `BatchProcessor`.
-- Dependencies point one way: `batch` uses `loads`, `loads` uses `attempts`, `attempts` uses `velocity`, `velocity` uses `money`, and `money` and `observability` use nothing.
+- Dependencies point one way: `batch` uses `loads`, `loads` uses `attempts`, `attempts` uses `velocity`, `velocity` uses `money`, and `money`, `observability` and `web` use nothing.
 - The controller and the batch runner are thin adapters over one `LoadHandler`, so validation and mapping happen in one place.
 - The rule classes have no Spring or database dependency (only `VelocityConfig` and `VelocityProperties` wire them in), so they are tested without a context.
 - Every decided attempt is stored with its status, and a rejected one with the name of the rule it broke, which doubles as an audit trail. Invalid and duplicate attempts are not stored. `customer_lock` holds one row per customer, locked while a load is decided. A unique `(customer_id, load_id)` constraint backs duplicate detection and a check constraint ties status to rejection reason.

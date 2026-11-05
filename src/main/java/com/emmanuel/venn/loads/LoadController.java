@@ -28,6 +28,8 @@ class LoadController {
             content = @Content)
     @ApiResponse(responseCode = "400", description = "Malformed or invalid request",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "413", description = "Request body larger than any valid load",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @PostMapping
     ResponseEntity<LoadResponse> submit(@RequestBody LoadRequest request) {
         return handler.handle(request)

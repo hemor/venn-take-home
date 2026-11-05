@@ -1,5 +1,6 @@
 package com.emmanuel.venn.loads;
 
+import com.emmanuel.venn.web.RequestTooLargeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -32,6 +33,13 @@ class LoadExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException e,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         Throwable cause = e.getMostSpecificCause();
+        if (cause instanceof RequestTooLargeException) {
+            log.warn("Refusing a request body that exceeds the size limit");
+            ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE,
+                    "The request body is too large");
+            problem.setTitle("Payload Too Large");
+            return handleExceptionInternal(e, problem, headers, HttpStatus.CONTENT_TOO_LARGE, request);
+        }
         if (cause instanceof JacksonException jackson && jackson.getLocation() != null) {
             log.warn("Unreadable load request: {} at line {}, column {}", cause.getClass().getSimpleName(),
                     jackson.getLocation().getLineNr(), jackson.getLocation().getColumnNr());

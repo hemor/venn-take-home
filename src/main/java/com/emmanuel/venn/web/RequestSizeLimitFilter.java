@@ -90,7 +90,7 @@ class RequestSizeLimitFilter extends OncePerRequestFilter {
         private void count(int n) throws IOException {
             count += n;
             if (count > MAX_BYTES) {
-                throw new IOException("Request body exceeds " + MAX_BYTES + " bytes");
+                throw new RequestTooLargeException(MAX_BYTES);
             }
         }
 

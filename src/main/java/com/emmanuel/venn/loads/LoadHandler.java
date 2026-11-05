@@ -83,7 +83,7 @@ public class LoadHandler {
     }
 
     private static String shown(String raw) {
-        String clean = raw.replaceAll("\\p{Cntrl}", "?");
+        String clean = raw.replaceAll("[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]", "?");
         return clean.length() <= 40 ? clean : clean.substring(0, 40) + "...";
     }
 }

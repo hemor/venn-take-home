@@ -213,10 +213,14 @@ class LoadHandlerTest {
     @Test
     void doesNotEchoLongOrMultilineValuesInTheErrorMessage() {
         String hostile = "$" + "x".repeat(500) + "\nINJECTED";
+        String unicodeBreaks = "$\u0085\u2028\u2029\u202E";
 
         assertThatThrownBy(() -> handler.handle(request("1", "99", hostile, "2018-01-01T00:00:00Z")))
                 .isInstanceOf(InvalidLoadException.class)
                 .satisfies(e -> assertThat(e.getMessage()).hasSizeLessThan(200).doesNotContain("\n"));
+        assertThatThrownBy(() -> handler.handle(request("1", "99", unicodeBreaks, "2018-01-01T00:00:00Z")))
+                .satisfies(e -> assertThat(e.getMessage())
+                        .doesNotContain("\u0085", "\u2028", "\u2029", "\u202E"));
     }
 
     @Test

@@ -5,7 +5,6 @@ import static com.emmanuel.venn.money.TestMoney.cad;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.emmanuel.venn.loads.LoadRequest;
 import com.emmanuel.venn.money.Money;
 import com.emmanuel.venn.money.TestMoney;
 import com.emmanuel.venn.velocity.TimeRange;
@@ -54,7 +53,7 @@ class JpaAttemptHistoryTest {
 
     @Test
     void storesTheLargestValuesTheApplicationAllows() {
-        String longestId = "i".repeat(LoadRequest.MAX_ID_LENGTH);
+        String longestId = "i".repeat(64);
         String longestReason = "R".repeat(VelocityRule.MAX_NAME_LENGTH);
         String largestAmount = "9".repeat(15) + ".99";
 
