@@ -36,7 +36,7 @@ velocity:
       # currency: CAD             # optional, AMOUNT only; limits this rule to loads in that currency
 ```
 
-A COUNT rule is capped with `max` and an AMOUNT rule with `max-in-cents`. Using the other key for a rule type fails startup.
+A COUNT rule is capped with `max` and an AMOUNT rule with `max-in-cents`. Using the other key for a rule type fails startup. Underscores such as `500_000` are allowed in YAML files only. Command-line arguments and environment variables need plain digits.
 
 Rules are checked in the order listed and the first one broken is the reason reported. Add, remove or change entries to change the limits, for example a weekly cap of 10 loads is one more entry. To change them without rebuilding, put the `velocity` block in a separate file and start the app with `--spring.config.additional-location=file:./rules.yaml`. A list in the external file replaces the built-in one. Startup fails if there are no rules, a rule is invalid (blank name, a non-positive limit, the wrong key for its metric) or two rules share a name.
 

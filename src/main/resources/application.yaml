@@ -34,8 +34,8 @@ velocity:
     - name: DAILY_AMOUNT_LIMIT
       window: DAY
       metric: AMOUNT
-      max-in-cents: 500000
+      max-in-cents: 500_000
     - name: WEEKLY_AMOUNT_LIMIT
       window: WEEK
       metric: AMOUNT
-      max-in-cents: 2000000
+      max-in-cents: 2_000_000
