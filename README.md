@@ -2,6 +2,20 @@
 
 A Spring Boot service that accepts or declines fund-load attempts per customer. It runs as a REST API and as a batch tool that reads JSON lines and writes one decision per line.
 
+## Where to start
+
+| To understand | Start at |
+| --- | --- |
+| Startup, and how batch mode is chosen | `VennTakeHomeApplication` |
+| The REST entry point | `loads/LoadController` |
+| The batch entry point | `loads/batch/BatchRunner` |
+| How a load is decided | `loads/LoadService` |
+| The limits | `velocity/VelocityLimitPolicy` and `velocity.rules` in `application.yaml` |
+| Storage | `loads/attempts/JpaAttemptHistory` and `db/migration/V1__create_load_attempt.sql` |
+| Logging and metrics | `observability/CorrelationIdFilter` and the counters in `LoadService` |
+
+Every package has a `package-info.java` saying what it is for.
+
 ## Rules
 
 Per customer: at most $5,000 per day, $20,000 per week and 3 loads per day. A day is a UTC date and a week starts on Monday 00:00 UTC.
@@ -21,12 +35,16 @@ Rules are checked in the order listed and the first one broken is the reason rep
 
 A new window type (for example a month) is one enum constant in `WindowType`.
 
-Interpretations I verified against the expected output in the task:
+Interpretations checked against the expected output in the task:
 
 - Only **accepted** loads count toward the limits. A declined load does not use up allowance.
 - A repeated load ID is scoped **per customer**. Only the first attempt is evaluated and later ones get no response. A declined load's ID still counts as seen, so a retry is ignored and not re-evaluated.
 - The limits are **inclusive**: loading exactly $5,000 in a day is allowed. The task data has no boundary case, so this is an assumption, covered by unit tests.
+
+Other choices of mine, not confirmed by the task data:
+
 - Timestamps with a UTC offset are converted to UTC before the day and week are chosen.
+- Input is validated against an allow-list, and every field is trimmed first. `id` and `customer_id` are 1 to 64 characters of letters, digits, `.`, `_` and `-`. `load_amount` is `$` plus up to 15 digits and at most 2 decimals. `time` is an ISO-8601 timestamp with an offset, in the years 1970 to 9999. Anything else is a 400 over REST and a skipped line in batch. The ids are opaque strings, never numbers, so `015` and `15` stay different.
 
 ## Run
 
@@ -39,7 +57,7 @@ Batch mode reads a file and writes the decisions. It does not start the web serv
 java -jar target/venn-take-home-0.0.1-SNAPSHOT.jar --input=input.txt --output=output.txt
 ```
 
-Malformed or invalid lines are logged with their line number and skipped. Infrastructure failures (for example the database going down) stop the batch with a non-zero exit code.
+Malformed or invalid lines are logged with their line number and skipped. Infrastructure failures (for example the database going down) stop the batch with a non-zero exit code and leave a partial output file. The output path must differ from the input path.
 
 API mode:
 
@@ -66,7 +84,8 @@ Docker files are included (`Dockerfile`, `compose.yaml` with Prometheus). They h
 ./mvnw test
 ```
 
-- Unit tests for the rules: limit boundaries, the day and week windows, amount parsing.
+- Unit tests for the rules: limit boundaries and the day and week windows.
+- Handler tests for validation and for parsing amounts and timestamps.
 - Service tests against an in-memory fake of the persistence port.
 - Repository tests against H2 through the real Flyway migration.
 - Controller tests for status codes and `ProblemDetail` bodies.
@@ -75,15 +94,22 @@ Docker files are included (`Dockerfile`, `compose.yaml` with Prometheus). They h
 ## Design
 
 ```
-api      REST controller, request/response DTOs, LoadHandler, correlation ID filter
-cli      BatchRunner and BatchProcessor
-service  LoadService: duplicate check, policy, persistence, metrics
-domain   VelocityRule, VelocityLimitPolicy, WindowType, LoadAmountParser, the LoadAttempts port
-persistence  JPA adapter for the port
+VennTakeHomeApplication
+loads/            the fund-load feature: REST controller, request/response contract, validation,
+                  LoadHandler, LoadService and the error handler
+  attempts/       the stored history of load attempts: the public LoadAttempt, Decision and
+                  AttemptHistory contract, with the JPA entity, repository and adapter hidden inside
+  batch/          the batch entry point: BatchRunner, BatchProcessor
+velocity/         the configurable limit engine: VelocityRule, VelocityLimitPolicy, WindowType and
+                  their configuration. It knows nothing about loads
+observability/    cross-cutting logging, such as the correlation ID filter
 ```
 
-- The controller and the CLI are thin adapters over one `LoadHandler`, so validation and mapping happen in one place.
-- The rules are a pure class with no Spring or database dependency, so they are tested without a context.
+- Packages are grouped by feature, in the style of Spring PetClinic, and split only where there is a distinct concern. A package sits at the top level only if it is a feature, an engine no single feature owns (`velocity`) or a cross-cutting concern (`observability`). Anything owned by one feature lives inside it.
+- A sub-package exists to hide internals behind a small public surface: `attempts` hides JPA and `batch` hides `BatchProcessor`.
+- Dependencies point one way: `batch` uses `loads`, `loads` uses `attempts`, `attempts` uses `velocity`, and `velocity` and `observability` use nothing.
+- The controller and the batch runner are thin adapters over one `LoadHandler`, so validation and mapping happen in one place.
+- The rule classes have no Spring or database dependency (only `VelocityConfig` and `VelocityProperties` wire them in), so they are tested without a context.
 - Every attempt is stored with its decision and rejection reason, which doubles as an audit trail. A unique `(customer_id, load_id)` constraint backs duplicate detection and a check constraint ties status to rejection reason.
 - The schema is plain SQL under Flyway, and the service depends on a repository interface, so moving from H2 to Postgres means changing the datasource and the driver.
 - Rules are data (`VelocityRule`) evaluated in order by `VelocityLimitPolicy`. The policy asks for a customer's accepted totals once per distinct window, and stops at the first broken rule.
@@ -94,7 +120,19 @@ persistence  JPA adapter for the port
 - Micrometer counter `loads.processed`, tagged by `outcome` (accepted, rejected, duplicate) and, for rejections, `reason`.
 - `/actuator/health`, `/actuator/metrics` and `/actuator/prometheus` are exposed.
 
-`spring-boot-h2console` is kept for local development and may be removed. The console is off unless `spring.h2.console.enabled=true`.
+## Database
+
+`application.yaml` configures an in-memory H2 database named `venn` (`jdbc:h2:mem:venn`). The login is `user`/`password`. Override it with the standard Spring Boot environment variables `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD`. The data lives as long as the JVM.
+
+To browse it, start the app with the `dev` profile, which turns on the H2 console. The console is off otherwise:
+
+```
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+Then open http://localhost:8080/h2-console and log in with the JDBC URL above. `spring-boot-h2console` is kept for this and may be removed later.
+
+For another database, set `SPRING_DATASOURCE_URL` along with the username and password variables, and add its driver.
 
 ## Known limitations and what I would do next
 
