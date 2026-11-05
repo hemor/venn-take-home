@@ -3,7 +3,7 @@ package com.emmanuel.venn.velocity;
 import com.emmanuel.venn.money.Money;
 
 /**
- * At most one {@link Limit} per {@code window}. The name is the rejection reason. An amount limit only applies to
+ * A {@link Limit} measured over a {@code window}. The name is the rejection reason. An amount limit only applies to
  * loads in its currency, if it has one; a load limit counts every load.
  */
 public record VelocityRule(String name, WindowType window, Limit limit) {

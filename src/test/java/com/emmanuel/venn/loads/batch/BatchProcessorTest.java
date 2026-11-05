@@ -26,6 +26,16 @@ class BatchProcessorTest {
     }
 
     @Test
+    void ignoresAByteOrderMarkAtTheStartOfTheInput() throws Exception {
+        StringWriter out = new StringWriter();
+
+        BatchSummary summary = run(store, "\uFEFF" + line("1", "10", "$1.00", T0) + "\n", out);
+
+        assertThat(out.toString()).isEqualTo("{\"id\":\"1\",\"customer_id\":\"10\",\"accepted\":true}\n");
+        assertThat(summary.invalidLines()).isZero();
+    }
+
+    @Test
     void writesOneResponseLinePerDecisionInInputOrder() throws Exception {
         StringWriter out = new StringWriter();
         String input = line("1", "10", "$100.00", T0) + "\n" + line("2", "10", "$6000.00", T0) + "\n";

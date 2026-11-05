@@ -54,12 +54,12 @@ class WindowTypeTest {
     }
 
     @Test
-    void rangeIncludesStartAndExcludesEnd() {
+    void aRangeIncludesItsStartAndEndsWhereTheNextOneBegins() {
         TimeRange range = WindowType.DAY.rangeContaining(Instant.parse("2018-01-03T12:00:00Z"));
 
-        assertThat(range.contains(range.start())).isTrue();
-        assertThat(range.contains(range.end().minusSeconds(1))).isTrue();
-        assertThat(range.contains(range.end())).isFalse();
-        assertThat(range.contains(range.start().minusSeconds(1))).isFalse();
+        assertThat(WindowType.DAY.rangeContaining(range.start())).isEqualTo(range);
+        assertThat(WindowType.DAY.rangeContaining(range.end().minusSeconds(1))).isEqualTo(range);
+        assertThat(WindowType.DAY.rangeContaining(range.end()).start()).isEqualTo(range.end());
+        assertThat(WindowType.DAY.rangeContaining(range.start().minusSeconds(1)).end()).isEqualTo(range.start());
     }
 }

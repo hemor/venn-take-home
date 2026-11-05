@@ -1,6 +1,10 @@
 spring:
   application:
     name: venn-take-home
+  threads:
+    virtual:
+      # Requests for one busy customer queue in process; virtual threads keep that wait from using up Tomcat's workers.
+      enabled: true
   datasource:
     # Local defaults. SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME and SPRING_DATASOURCE_PASSWORD override them when set.
     url: jdbc:h2:mem:venn;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=5000

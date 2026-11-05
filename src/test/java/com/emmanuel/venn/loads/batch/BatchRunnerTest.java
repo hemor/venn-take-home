@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.emmanuel.venn.loads.attempts.InMemoryAttemptHistory;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -56,6 +57,32 @@ class BatchRunnerTest {
         assertThatThrownBy(() -> runner.run(new DefaultApplicationArguments(
                 "--input=" + dir.resolve("missing.txt"), "--output=" + dir.resolve("out.txt"))))
                 .isInstanceOf(NoSuchFileException.class);
+    }
+
+    @Test
+    void skipsALineWithInvalidUtf8AndProcessesTheRest() throws Exception {
+        byte[] first = LINE.getBytes(StandardCharsets.UTF_8);
+        byte[] broken = "{\"id\":\"2\",\"customer_id\":\"1\u00e9\",\"load_amount\":\"$1.00\",\"time\":\"2018-01-01T00:00:00Z\"}\n"
+                .getBytes(StandardCharsets.ISO_8859_1);
+        byte[] last = LINE.replace("\"id\":\"1\"", "\"id\":\"3\"").getBytes(StandardCharsets.UTF_8);
+        Path input = dir.resolve("in.txt");
+        Files.write(input, concat(first, broken, last));
+        Path output = dir.resolve("out.txt");
+
+        runner.run(new DefaultApplicationArguments("--input=" + input, "--output=" + output));
+
+        assertThat(output).hasContent("""
+                {"id":"1","customer_id":"10","accepted":true}
+                {"id":"3","customer_id":"10","accepted":true}
+                """);
+    }
+
+    private static byte[] concat(byte[]... parts) {
+        return java.util.Arrays.stream(parts).reduce(new byte[0], (a, b) -> {
+            byte[] joined = java.util.Arrays.copyOf(a, a.length + b.length);
+            System.arraycopy(b, 0, joined, a.length, b.length);
+            return joined;
+        });
     }
 
     @Test

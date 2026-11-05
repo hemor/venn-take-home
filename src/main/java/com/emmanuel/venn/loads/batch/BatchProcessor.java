@@ -21,6 +21,8 @@ class BatchProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(BatchProcessor.class);
 
+    private static final String BYTE_ORDER_MARK = "\uFEFF";
+
     private final LoadHandler handler;
     private final JsonMapper mapper;
 
@@ -39,6 +41,9 @@ class BatchProcessor {
         String line;
         while ((line = reader.readLine()) != null) {
             lineNumber++;
+            if (lineNumber == 1 && line.startsWith(BYTE_ORDER_MARK)) {
+                line = line.substring(1);
+            }
             if (line.isBlank()) {
                 continue;
             }

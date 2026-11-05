@@ -4,6 +4,10 @@ import com.emmanuel.venn.observability.CorrelationIdFilter;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -45,16 +49,24 @@ public class BatchRunner implements ApplicationRunner {
             throw new IllegalArgumentException("--input and --output are the same file: " + input);
         }
         try (MDC.MDCCloseable ignored = MDC.putCloseable(CorrelationIdFilter.MDC_KEY, "batch-" + UUID.randomUUID());
-                BufferedReader reader = Files.newBufferedReader(input);
+                BufferedReader reader = lenientReader(input);
                 BufferedWriter writer = Files.newBufferedWriter(output)) {
             log.info("Processing {} into {}", input, output);
             try {
                 processor.process(reader, writer);
-            } catch (RuntimeException e) {
+            } catch (IOException | RuntimeException e) {
                 log.error("Aborting batch, the output file is incomplete", e);
                 throw e;
             }
         }
+    }
+
+    // A stray non-UTF-8 byte then fails one line's validation instead of aborting the whole file.
+    private static BufferedReader lenientReader(Path input) throws IOException {
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPLACE)
+                .onUnmappableCharacter(CodingErrorAction.REPLACE);
+        return new BufferedReader(new InputStreamReader(Files.newInputStream(input), decoder));
     }
 
     private static String requiredOption(ApplicationArguments args, String name) {

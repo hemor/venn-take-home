@@ -75,7 +75,7 @@ class MoneyTest {
     }
 
     @Test
-    void zeroIsNeverANegativeAmountOfAnyCurrency() {
+    void zeroHasNoMinorUnitsInAnyCurrency() {
         assertThat(Money.zero(JPY)).isEqualTo(new Money(0, JPY));
     }
 }

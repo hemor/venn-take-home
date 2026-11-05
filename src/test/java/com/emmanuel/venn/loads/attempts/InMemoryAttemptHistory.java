@@ -30,7 +30,7 @@ public class InMemoryAttemptHistory implements AttemptHistory {
         List<LoadAttempt> accepted = stored.stream()
                 .filter(s -> s.decision().isAccepted() && s.attempt().customerId().equals(customerId))
                 .map(Stored::attempt)
-                .filter(a -> range.contains(a.time()))
+                .filter(a -> !a.time().isBefore(range.start()) && a.time().isBefore(range.end()))
                 .toList();
         Money sum = accepted.stream().map(LoadAttempt::amount)
                 .filter(amount -> amount.currency().equals(amountCurrency))

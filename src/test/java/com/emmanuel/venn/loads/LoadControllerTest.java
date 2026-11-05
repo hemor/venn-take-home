@@ -81,6 +81,17 @@ class LoadControllerTest {
     }
 
     @Test
+    void logsWhichKindOfUnreadableBodyWasSent(CapturedOutput output) throws Exception {
+        postLoad("[1]").andExpect(status().isBadRequest());
+        postLoad("").andExpect(status().isBadRequest());
+        postLoad("{not json").andExpect(status().isBadRequest());
+
+        assertThat(output).contains("Unreadable load request: MismatchedInputException")
+                .contains("Unreadable load request: HttpMessageNotReadableException")
+                .containsPattern("Unreadable load request: \\w+ at line 1, column \\d+");
+    }
+
+    @Test
     void hidesInternalErrorDetails() throws Exception {
         when(handler.handle(any())).thenThrow(new IllegalStateException("jdbc:h2:mem secret"));
 

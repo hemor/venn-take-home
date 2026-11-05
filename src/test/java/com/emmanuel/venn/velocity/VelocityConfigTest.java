@@ -14,7 +14,7 @@ class VelocityConfigTest {
     @Test
     void bindsRulesInConfiguredOrder() {
         runner.withPropertyValues(
-                "velocity.rules[0].name=PER_MINUTE_COUNT",
+                "velocity.rules[0].name=PER_DAY_COUNT",
                 "velocity.rules[0].window=DAY",
                 "velocity.rules[0].metric=COUNT",
                 "velocity.rules[0].max=2",
@@ -24,7 +24,7 @@ class VelocityConfigTest {
                 "velocity.rules[1].max-in-cents=25050",
                 "velocity.rules[1].currency=CAD")
                 .run(context -> assertThat(context.getBean(VelocityLimitPolicy.class).rules()).containsExactly(
-                        new VelocityRule("PER_MINUTE_COUNT", WindowType.DAY, new Limit.MaxLoads(2)),
+                        new VelocityRule("PER_DAY_COUNT", WindowType.DAY, new Limit.MaxLoads(2)),
                         new VelocityRule("WEEKLY_CAP", WindowType.WEEK, new Limit.MaxAmount(25050, CAD))));
     }
 
