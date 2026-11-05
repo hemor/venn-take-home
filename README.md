@@ -12,7 +12,7 @@ Assumptions:
 
 ## Build and run
 
-Requires Java 25 or later. The Maven wrapper is included.
+Requires JDK 25 or later (not just a JRE, since Maven compiles the code). The Maven wrapper is included.
 
 ```
 ./mvnw test                  # unit, integration and end-to-end tests
@@ -36,7 +36,9 @@ curl -X POST localhost:8080/v1/loads -H 'Content-Type: application/json' \
   -d '{"id":"1234","customer_id":"1234","load_amount":"$123.45","time":"2018-01-01T00:00:00Z"}'
 ```
 
-It returns 200 with the decision, or 204 for a repeated load ID. Invalid input gets a 400 ProblemDetail. The API docs are at `/docs`. With the service running, `scripts/load-check.py` fires concurrent and repeated requests and checks the decisions.
+It returns 200 with the decision, or 204 for a repeated load ID. Invalid input gets a 400 ProblemDetail. The API docs are at `/docs`.
+
+Load check: with the service running, `python3 scripts/load-check.py [base-url]` fires concurrent and repeated requests at `POST /v1/loads` and checks the decisions. It needs Python 3 and nothing else. The service itself does not need Python. The base URL defaults to `http://localhost:8080`.
 
 ## Design overview
 
