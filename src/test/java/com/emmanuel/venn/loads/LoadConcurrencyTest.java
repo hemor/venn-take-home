@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.emmanuel.venn.loads.attempts.AttemptHistory;
 import com.emmanuel.venn.loads.attempts.Decision;
 import com.emmanuel.venn.loads.attempts.LoadAttempt;
-import java.math.BigDecimal;
+import com.emmanuel.venn.money.TestMoney;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,7 +59,7 @@ class LoadConcurrencyTest {
     @Test
     void simultaneousLoadsForOneCustomerNeverExceedTheDailyCount() throws Exception {
         var results = inParallel(THREADS,
-                i -> new LoadAttempt("count-" + i, "count-customer", new BigDecimal("1.00"), TIME));
+                i -> new LoadAttempt("count-" + i, "count-customer", TestMoney.cad("1.00"), TIME));
 
         assertThat(accepted(results)).isEqualTo(3);
     }
@@ -67,7 +67,7 @@ class LoadConcurrencyTest {
     @Test
     void simultaneousLoadsForOneCustomerNeverExceedTheDailyAmount() throws Exception {
         var results = inParallel(THREADS,
-                i -> new LoadAttempt("amount-" + i, "amount-customer", new BigDecimal("5000.00"), TIME));
+                i -> new LoadAttempt("amount-" + i, "amount-customer", TestMoney.cad("5000.00"), TIME));
 
         assertThat(accepted(results)).isEqualTo(1);
     }
@@ -75,7 +75,7 @@ class LoadConcurrencyTest {
     @Test
     void theSameLoadSentSimultaneouslyIsDecidedOnce() throws Exception {
         var results = inParallel(THREADS,
-                i -> new LoadAttempt("same", "same-customer", new BigDecimal("10.00"), TIME));
+                i -> new LoadAttempt("same", "same-customer", TestMoney.cad("10.00"), TIME));
 
         assertThat(results.stream().filter(Optional::isPresent).count()).isEqualTo(1);
     }
@@ -83,7 +83,7 @@ class LoadConcurrencyTest {
     @Test
     void differentCustomersDoNotAffectEachOther() throws Exception {
         var results = inParallel(THREADS,
-                i -> new LoadAttempt("1", "separate-" + i, new BigDecimal("5000.00"), TIME));
+                i -> new LoadAttempt("1", "separate-" + i, TestMoney.cad("5000.00"), TIME));
 
         assertThat(accepted(results)).isEqualTo(THREADS);
     }

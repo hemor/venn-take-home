@@ -35,7 +35,9 @@ velocity:
       window: DAY
       metric: AMOUNT
       max: 5000
+      currency: CAD
     - name: WEEKLY_AMOUNT_LIMIT
       window: WEEK
       metric: AMOUNT
       max: 20000
+      currency: CAD

@@ -1,55 +1,61 @@
 package com.emmanuel.venn.velocity;
 
+import static com.emmanuel.venn.money.TestMoney.CAD;
+import static com.emmanuel.venn.money.TestMoney.cad;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.emmanuel.venn.money.Money;
 import java.math.BigDecimal;
+import java.util.Currency;
 import org.junit.jupiter.api.Test;
 
 class VelocityRuleTest {
 
+    private static final Currency USD = Currency.getInstance("USD");
+
     private static VelocityRule amountRule(String max) {
-        return new VelocityRule("DAILY_AMOUNT", WindowType.DAY, Metric.AMOUNT, new BigDecimal(max));
+        return new VelocityRule("DAILY_AMOUNT", WindowType.DAY, Metric.AMOUNT, new BigDecimal(max), CAD);
     }
 
     private static VelocityRule countRule(String max) {
-        return new VelocityRule("DAILY_COUNT", WindowType.DAY, Metric.COUNT, new BigDecimal(max));
+        return new VelocityRule("DAILY_COUNT", WindowType.DAY, Metric.COUNT, new BigDecimal(max), null);
     }
 
     private static Totals totals(String amount, int count) {
-        return new Totals(new BigDecimal(amount), count);
+        return new Totals(cad(amount), count);
     }
 
     @Test
     void amountRuleAllowsTotalExactlyAtMax() {
-        assertThat(amountRule("5000").isExceededBy(totals("3000.00", 1), new BigDecimal("2000.00"))).isFalse();
+        assertThat(amountRule("5000").isExceededBy(totals("3000.00", 1), cad("2000.00"))).isFalse();
     }
 
     @Test
     void amountRuleIsExceededByOneCentOverMax() {
-        assertThat(amountRule("5000").isExceededBy(totals("3000.00", 1), new BigDecimal("2000.01"))).isTrue();
+        assertThat(amountRule("5000").isExceededBy(totals("3000.00", 1), cad("2000.01"))).isTrue();
     }
 
     @Test
     void countRuleAllowsTheLoadThatReachesMax() {
-        assertThat(countRule("3").isExceededBy(totals("2.00", 2), new BigDecimal("1.00"))).isFalse();
+        assertThat(countRule("3").isExceededBy(totals("2.00", 2), cad("1.00"))).isFalse();
     }
 
     @Test
     void countRuleIsExceededByTheLoadAfterMax() {
-        assertThat(countRule("3").isExceededBy(totals("3.00", 3), new BigDecimal("1.00"))).isTrue();
+        assertThat(countRule("3").isExceededBy(totals("3.00", 3), cad("1.00"))).isTrue();
     }
 
     @Test
     void countRuleIgnoresTheAmount() {
-        assertThat(countRule("3").isExceededBy(Totals.NONE, new BigDecimal("999999"))).isFalse();
+        assertThat(countRule("3").isExceededBy(Totals.none(CAD), cad("999999"))).isFalse();
     }
 
     @Test
     void rejectsNameLongerThanTheStoredRejectionReason() {
         String tooLong = "R".repeat(VelocityRule.MAX_NAME_LENGTH + 1);
 
-        assertThatThrownBy(() -> new VelocityRule(tooLong, WindowType.DAY, Metric.AMOUNT, BigDecimal.ONE))
+        assertThatThrownBy(() -> new VelocityRule(tooLong, WindowType.DAY, Metric.AMOUNT, BigDecimal.ONE, CAD))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("at most " + VelocityRule.MAX_NAME_LENGTH);
     }
@@ -58,27 +64,64 @@ class VelocityRuleTest {
     void acceptsNameOfExactlyTheMaximumLength() {
         String name = "R".repeat(VelocityRule.MAX_NAME_LENGTH);
 
-        assertThat(new VelocityRule(name, WindowType.DAY, Metric.AMOUNT, BigDecimal.ONE).name()).isEqualTo(name);
+        assertThat(new VelocityRule(name, WindowType.DAY, Metric.AMOUNT, BigDecimal.ONE, CAD).name()).isEqualTo(name);
     }
 
     @Test
     void rejectsBlankName() {
-        assertThatThrownBy(() -> new VelocityRule(" ", WindowType.DAY, Metric.AMOUNT, BigDecimal.ONE))
+        assertThatThrownBy(() -> new VelocityRule(" ", WindowType.DAY, Metric.AMOUNT, BigDecimal.ONE, CAD))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("name");
     }
 
     @Test
     void rejectsNonPositiveMax() {
-        assertThatThrownBy(() -> new VelocityRule("R", WindowType.DAY, Metric.AMOUNT, BigDecimal.ZERO))
+        assertThatThrownBy(() -> new VelocityRule("R", WindowType.DAY, Metric.AMOUNT, BigDecimal.ZERO, CAD))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("max");
     }
 
     @Test
     void rejectsFractionalCountMax() {
-        assertThatThrownBy(() -> new VelocityRule("R", WindowType.DAY, Metric.COUNT, new BigDecimal("2.5")))
+        assertThatThrownBy(() -> new VelocityRule("R", WindowType.DAY, Metric.COUNT, new BigDecimal("2.5"), null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("whole number");
+    }
+
+    @Test
+    void anAmountRuleNeedsACurrency() {
+        assertThatThrownBy(() -> new VelocityRule("R", WindowType.DAY, Metric.AMOUNT, BigDecimal.TEN, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("needs a currency");
+    }
+
+    @Test
+    void aCountRuleHasNoCurrency() {
+        assertThatThrownBy(() -> new VelocityRule("R", WindowType.DAY, Metric.COUNT, BigDecimal.TEN, CAD))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no currency");
+    }
+
+    @Test
+    void rejectsAnAmountMaxFinerThanTheSmallestUnitOfTheCurrency() {
+        assertThatThrownBy(() -> new VelocityRule("R", WindowType.DAY, Metric.AMOUNT, new BigDecimal("1.005"), CAD))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("CAD");
+    }
+
+    @Test
+    void anAmountRuleDoesNotApplyToLoadsInAnotherCurrency() {
+        Money usdLoad = Money.ofMajor(new BigDecimal("999999"), USD);
+
+        assertThat(amountRule("5000").isExceededBy(Totals.none(USD), usdLoad)).isFalse();
+    }
+
+    @Test
+    void anAmountRuleInAnotherCurrencyAppliesToLoadsInThatCurrency() {
+        VelocityRule usdRule = new VelocityRule("DAILY_AMOUNT_USD", WindowType.DAY, Metric.AMOUNT,
+                new BigDecimal("100"), USD);
+
+        assertThat(usdRule.isExceededBy(Totals.none(USD), Money.ofMajor(new BigDecimal("100.01"), USD))).isTrue();
+        assertThat(usdRule.isExceededBy(Totals.none(USD), Money.ofMajor(new BigDecimal("100.00"), USD))).isFalse();
     }
 }

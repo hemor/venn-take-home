@@ -1,6 +1,6 @@
 package com.emmanuel.venn.loads.attempts;
 
-import java.math.BigDecimal;
+import com.emmanuel.venn.money.Money;
 import java.time.Instant;
 
-public record LoadAttempt(String loadId, String customerId, BigDecimal amount, Instant time) {}
+public record LoadAttempt(String loadId, String customerId, Money amount, Instant time) {}

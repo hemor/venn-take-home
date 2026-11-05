@@ -2,6 +2,7 @@ package com.emmanuel.venn.loads.attempts;
 
 import com.emmanuel.venn.velocity.TimeRange;
 import com.emmanuel.venn.velocity.Totals;
+import java.util.Currency;
 import java.util.function.Supplier;
 
 public interface AttemptHistory {
@@ -14,7 +15,8 @@ public interface AttemptHistory {
 
     boolean exists(String customerId, String loadId);
 
-    Totals acceptedTotals(String customerId, TimeRange range);
+    /** Sums accepted amounts in {@code amountCurrency}, and counts accepted loads in every currency. */
+    Totals acceptedTotals(String customerId, TimeRange range, Currency amountCurrency);
 
     /** @throws DuplicateLoadException if the customer already has an attempt with this load id */
     void save(LoadAttempt attempt, Decision decision);

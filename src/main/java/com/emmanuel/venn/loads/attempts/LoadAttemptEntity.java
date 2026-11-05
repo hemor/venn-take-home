@@ -8,7 +8,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -26,7 +25,10 @@ class LoadAttemptEntity {
     private String customerId;
 
     @Column(nullable = false)
-    private BigDecimal amount;
+    private long amountMinor;
+
+    @Column(nullable = false)
+    private String currency;
 
     @Column(nullable = false)
     private Instant occurredAt;
@@ -39,11 +41,12 @@ class LoadAttemptEntity {
 
     protected LoadAttemptEntity() {}
 
-    LoadAttemptEntity(String loadId, String customerId, BigDecimal amount, Instant occurredAt,
+    LoadAttemptEntity(String loadId, String customerId, long amountMinor, String currency, Instant occurredAt,
             AttemptStatus status, String rejectionReason) {
         this.loadId = loadId;
         this.customerId = customerId;
-        this.amount = amount;
+        this.amountMinor = amountMinor;
+        this.currency = currency;
         this.occurredAt = occurredAt;
         this.status = status;
         this.rejectionReason = rejectionReason;

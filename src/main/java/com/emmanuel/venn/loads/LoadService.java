@@ -45,7 +45,7 @@ public class LoadService {
         }
         Decision decision = policy
                 .evaluate(attempt.amount(), attempt.time(),
-                        range -> attempts.acceptedTotals(attempt.customerId(), range))
+                        (range, currency) -> attempts.acceptedTotals(attempt.customerId(), range, currency))
                 .map(Decision::rejected)
                 .orElseGet(Decision::accepted);
         attempts.save(attempt, decision);

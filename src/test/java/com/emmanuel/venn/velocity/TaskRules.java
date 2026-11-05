@@ -1,5 +1,7 @@
 package com.emmanuel.venn.velocity;
 
+import static com.emmanuel.venn.money.TestMoney.CAD;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -10,9 +12,9 @@ public final class TaskRules {
 
     public static List<VelocityRule> rules() {
         return List.of(
-                new VelocityRule("DAILY_COUNT_LIMIT", WindowType.DAY, Metric.COUNT, new BigDecimal("3")),
-                new VelocityRule("DAILY_AMOUNT_LIMIT", WindowType.DAY, Metric.AMOUNT, new BigDecimal("5000")),
-                new VelocityRule("WEEKLY_AMOUNT_LIMIT", WindowType.WEEK, Metric.AMOUNT, new BigDecimal("20000")));
+                new VelocityRule("DAILY_COUNT_LIMIT", WindowType.DAY, Metric.COUNT, new BigDecimal("3"), null),
+                new VelocityRule("DAILY_AMOUNT_LIMIT", WindowType.DAY, Metric.AMOUNT, new BigDecimal("5000"), CAD),
+                new VelocityRule("WEEKLY_AMOUNT_LIMIT", WindowType.WEEK, Metric.AMOUNT, new BigDecimal("20000"), CAD));
     }
 
     public static VelocityLimitPolicy policy() {

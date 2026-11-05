@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.emmanuel.venn.VennTakeHomeApplication;
 import com.emmanuel.venn.loads.attempts.Decision;
 import com.emmanuel.venn.loads.attempts.LoadAttempt;
-import java.math.BigDecimal;
+import com.emmanuel.venn.money.TestMoney;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,7 +62,7 @@ class MultiInstanceTest {
         List<Future<Optional<Decision>>> futures = new ArrayList<>();
         for (int i = 0; i < INSTANCES; i++) {
             LoadService instance = instances.get(i).getBean(LoadService.class);
-            LoadAttempt load = new LoadAttempt("load-" + i, customerId, new BigDecimal(amount), TIME);
+            LoadAttempt load = new LoadAttempt("load-" + i, customerId, TestMoney.cad(amount), TIME);
             futures.add(pool.submit(() -> {
                 together.await();
                 return instance.process(load);

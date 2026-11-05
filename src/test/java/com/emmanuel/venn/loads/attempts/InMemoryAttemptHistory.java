@@ -1,8 +1,9 @@
 package com.emmanuel.venn.loads.attempts;
 
+import com.emmanuel.venn.money.Money;
 import com.emmanuel.venn.velocity.TimeRange;
 import com.emmanuel.venn.velocity.Totals;
-import java.math.BigDecimal;
+import java.util.Currency;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -25,15 +26,16 @@ public class InMemoryAttemptHistory implements AttemptHistory {
     }
 
     @Override
-    public Totals acceptedTotals(String customerId, TimeRange range) {
+    public Totals acceptedTotals(String customerId, TimeRange range, Currency amountCurrency) {
         List<LoadAttempt> accepted = stored.stream()
                 .filter(s -> s.decision().isAccepted() && s.attempt().customerId().equals(customerId))
                 .map(Stored::attempt)
                 .filter(a -> range.contains(a.time()))
                 .toList();
-        return new Totals(
-                accepted.stream().map(LoadAttempt::amount).reduce(BigDecimal.ZERO, BigDecimal::add),
-                accepted.size());
+        Money sum = accepted.stream().map(LoadAttempt::amount)
+                .filter(amount -> amount.currency().equals(amountCurrency))
+                .reduce(Money.zero(amountCurrency), Money::plus);
+        return new Totals(sum, accepted.size());
     }
 
     @Override

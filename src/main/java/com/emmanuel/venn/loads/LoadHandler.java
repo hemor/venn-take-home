@@ -1,6 +1,7 @@
 package com.emmanuel.venn.loads;
 
 import com.emmanuel.venn.loads.attempts.LoadAttempt;
+import com.emmanuel.venn.money.Money;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import java.math.BigDecimal;
@@ -8,6 +9,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
+import java.util.Currency;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -19,6 +21,7 @@ public class LoadHandler {
 
     private static final Pattern DOLLARS = Pattern.compile("\\$(\\d{1,15})(\\.\\d{1,2})?");
 
+    private static final Currency DOLLAR_SIGN_CURRENCY = Currency.getInstance("CAD");
     private static final int MIN_YEAR = 1970;
     private static final int MAX_YEAR = 9999;
 
@@ -53,12 +56,12 @@ public class LoadHandler {
                 parseAmount(request.loadAmount()), parseTime(request.time()));
     }
 
-    private static BigDecimal parseAmount(String raw) {
+    private static Money parseAmount(String raw) {
         if (!DOLLARS.matcher(raw).matches()) {
             throw new InvalidLoadException("load_amount must look like $123.45 and be under 1 quadrillion, got: " + shown(raw));
         }
-        BigDecimal amount = new BigDecimal(raw.substring(1));
-        if (amount.signum() <= 0) {
+        Money amount = Money.ofMajor(new BigDecimal(raw.substring(1)), DOLLAR_SIGN_CURRENCY);
+        if (amount.minorUnits() <= 0) {
             throw new InvalidLoadException("load_amount must be positive, got: " + shown(raw));
         }
         return amount;

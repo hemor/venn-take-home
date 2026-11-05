@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.emmanuel.venn.loads.attempts.Decision;
 import com.emmanuel.venn.loads.attempts.InMemoryAttemptHistory;
 import com.emmanuel.venn.loads.attempts.LoadAttempt;
+import com.emmanuel.venn.money.TestMoney;
 import com.emmanuel.venn.velocity.TaskRules;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,7 @@ class LoadServiceTest {
             meters);
 
     private static LoadAttempt load(String loadId, String customerId, String amount, Instant time) {
-        return new LoadAttempt(loadId, customerId, new BigDecimal(amount), time);
+        return new LoadAttempt(loadId, customerId, TestMoney.cad(amount), time);
     }
 
     private double count(String outcome) {

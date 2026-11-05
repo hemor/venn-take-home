@@ -1,6 +1,6 @@
 package com.emmanuel.venn.velocity;
 
-import java.math.BigDecimal;
+import com.emmanuel.venn.money.Money;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -24,11 +24,11 @@ public class VelocityLimitPolicy {
     }
 
     /** @return the name of the first configured rule the load would break, or empty if it is allowed */
-    public Optional<String> evaluate(BigDecimal amount, Instant time, ActivityLookup activity) {
+    public Optional<String> evaluate(Money amount, Instant time, ActivityLookup activity) {
         Map<TimeRange, Totals> priorByRange = new HashMap<>();
         for (VelocityRule rule : rules) {
             TimeRange range = rule.window().rangeContaining(time);
-            Totals prior = priorByRange.computeIfAbsent(range, activity::acceptedWithin);
+            Totals prior = priorByRange.computeIfAbsent(range, r -> activity.acceptedWithin(r, amount.currency()));
             if (rule.isExceededBy(prior, amount)) {
                 return Optional.of(rule.name());
             }

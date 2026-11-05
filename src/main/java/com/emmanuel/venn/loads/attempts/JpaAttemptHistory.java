@@ -1,8 +1,9 @@
 package com.emmanuel.venn.loads.attempts;
 
+import com.emmanuel.venn.money.Money;
 import com.emmanuel.venn.velocity.TimeRange;
 import com.emmanuel.venn.velocity.Totals;
-import java.math.BigDecimal;
+import java.util.Currency;
 import java.util.function.Supplier;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -72,11 +73,11 @@ class JpaAttemptHistory implements AttemptHistory {
     }
 
     @Override
-    public Totals acceptedTotals(String customerId, TimeRange range) {
-        AcceptedTotals accepted = repository.totalsWithStatus(customerId, AttemptStatus.ACCEPTED,
-                range.start(), range.end());
-        BigDecimal amount = accepted.getTotal() == null ? BigDecimal.ZERO : accepted.getTotal();
-        return new Totals(amount, Math.toIntExact(accepted.getLoads()));
+    public Totals acceptedTotals(String customerId, TimeRange range, Currency amountCurrency) {
+        AcceptedTotals accepted = repository.totalsWithStatus(customerId, amountCurrency.getCurrencyCode(),
+                AttemptStatus.ACCEPTED, range.start(), range.end());
+        long minorUnits = accepted.getTotal() == null ? 0 : accepted.getTotal();
+        return new Totals(new Money(minorUnits, amountCurrency), Math.toIntExact(accepted.getLoads()));
     }
 
     @Override
@@ -84,7 +85,8 @@ class JpaAttemptHistory implements AttemptHistory {
         AttemptStatus status = decision.isAccepted() ? AttemptStatus.ACCEPTED : AttemptStatus.REJECTED;
         try {
             repository.saveAndFlush(new LoadAttemptEntity(attempt.loadId(), attempt.customerId(),
-                    attempt.amount(), attempt.time(), status, decision.rejectionReason()));
+                    attempt.amount().minorUnits(), attempt.amount().currency().getCurrencyCode(),
+                    attempt.time(), status, decision.rejectionReason()));
         } catch (DataIntegrityViolationException e) {
             if (isUniqueViolation(e)) {
                 throw new DuplicateLoadException(attempt.customerId(), attempt.loadId(), e);

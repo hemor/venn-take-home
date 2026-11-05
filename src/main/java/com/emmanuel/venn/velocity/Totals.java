@@ -1,9 +1,12 @@
 package com.emmanuel.venn.velocity;
 
-import java.math.BigDecimal;
+import com.emmanuel.venn.money.Money;
+import java.util.Currency;
 
-/** Sum and number of a customer's accepted loads within a time range. */
-public record Totals(BigDecimal amount, int count) {
+/** Sum, in one currency, and number, across all currencies, of a customer's accepted loads within a time range. */
+public record Totals(Money amount, int count) {
 
-    public static final Totals NONE = new Totals(BigDecimal.ZERO, 0);
+    public static Totals none(Currency currency) {
+        return new Totals(Money.zero(currency), 0);
+    }
 }
