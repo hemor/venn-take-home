@@ -2,6 +2,7 @@ package com.emmanuel.venn.loads;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.emmanuel.venn.loads.attempts.AttemptHistory;
 import com.emmanuel.venn.loads.attempts.Decision;
 import com.emmanuel.venn.loads.attempts.LoadAttempt;
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +27,9 @@ class LoadConcurrencyTest {
 
     @Autowired
     private LoadService service;
+
+    @Autowired
+    private AttemptHistory history;
 
     private List<Optional<Decision>> inParallel(int count, java.util.function.IntFunction<LoadAttempt> attempt)
             throws Exception {
@@ -81,5 +86,38 @@ class LoadConcurrencyTest {
                 i -> new LoadAttempt("1", "separate-" + i, new BigDecimal("5000.00"), TIME));
 
         assertThat(accepted(results)).isEqualTo(THREADS);
+    }
+
+    @Test
+    void customersQueuedBehindAHotCustomerDoNotUseUpTheConnectionPool() throws Exception {
+        ExecutorService pool = Executors.newCachedThreadPool();
+        CountDownLatch holding = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        pool.submit(() -> history.withCustomerLock("hot", () -> {
+            holding.countDown();
+            await(release);
+            return null;
+        }));
+        holding.await();
+        for (int i = 0; i < 20; i++) {
+            pool.submit(() -> history.withCustomerLock("hot", () -> null));
+        }
+
+        Future<String> other = pool.submit(() -> history.withCustomerLock("other", () -> "done"));
+
+        try {
+            assertThat(other.get(1, TimeUnit.SECONDS)).isEqualTo("done");
+        } finally {
+            release.countDown();
+            pool.shutdown();
+        }
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }

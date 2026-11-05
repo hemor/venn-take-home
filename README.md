@@ -123,7 +123,7 @@ observability/    cross-cutting logging, such as the correlation ID filter
 
 ## Database
 
-`application.yaml` configures an in-memory H2 database named `venn` (`jdbc:h2:mem:venn`). The login is `user`/`password`. Override it with the standard Spring Boot environment variables `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD`. The data lives as long as the JVM.
+`application.yaml` configures an in-memory H2 database named `venn` (`jdbc:h2:mem:venn`). The login is `user`/`password`. Override it with the standard Spring Boot environment variables `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD`. The data lives as long as the JVM and is private to it: each instance gets its own empty database.
 
 To browse it, start the app with the `dev` profile, which turns on the H2 console. The console is off otherwise:
 
@@ -137,7 +137,7 @@ For another database, set `SPRING_DATASOURCE_URL` along with the username and pa
 
 ## Known limitations and what I would do next
 
-- **Concurrency.** Decisions for one customer are serialized with a row lock in `customer_lock`, so the check and the insert are atomic across instances sharing a database. Bursts for one customer queue while holding a database connection, so a very hot customer can use up the pool. I would bound that with a lock timeout and an in-process queue per customer in front, and measure before adding a distributed lock such as Redis.
+- **Concurrency.** Decisions for one customer are serialized twice: by an in-process queue per customer, so waiting requests are parked threads and not pooled connections, and by a row lock in `customer_lock`, so the check and the insert are atomic across instances. The cross-instance guarantee needs a database the instances share, which the default in-memory H2 is not. I would add a lock timeout and, only if contention is measured, a distributed lock such as Redis.
 - **Retries.** A repeated load ID gets a `204`, so the original decision is not replayed. I would return the stored decision, or a `409` when the payload differs.
 - **Authentication.** None. I would add an OAuth2 resource server.
 - **Database.** In-memory H2 is fine for the task. In production I would use Postgres and run the repository tests against it with Testcontainers.

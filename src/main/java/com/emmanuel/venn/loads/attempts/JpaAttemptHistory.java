@@ -16,6 +16,7 @@ class JpaAttemptHistory implements AttemptHistory {
 
     private final LoadAttemptRepository repository;
     private final CustomerLockRepository locks;
+    private final KeyedLock customerQueue = new KeyedLock();
     private final TransactionTemplate transaction;
     private final TransactionTemplate separateTransaction;
 
@@ -30,10 +31,13 @@ class JpaAttemptHistory implements AttemptHistory {
 
     @Override
     public <T> T withCustomerLock(String customerId, Supplier<T> action) {
-        ensureLockRowExists(customerId);
-        return transaction.execute(status -> {
-            locks.lockByCustomerId(customerId);
-            return action.get();
+        // Waiting here costs a parked thread; waiting on the row lock would hold a pooled connection.
+        return customerQueue.withLock(customerId, () -> {
+            ensureLockRowExists(customerId);
+            return transaction.execute(status -> {
+                locks.lockByCustomerId(customerId);
+                return action.get();
+            });
         });
     }
 
