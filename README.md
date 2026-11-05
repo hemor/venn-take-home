@@ -89,7 +89,7 @@ Docker files are included (`Dockerfile`, `compose.yaml` with Prometheus). They h
 - Service tests against an in-memory fake of the persistence port.
 - Repository tests against H2 through the real Flyway migration.
 - Controller tests for status codes and `ProblemDetail` bodies.
-- Concurrency tests: simultaneous loads for one customer never exceed the daily count or amount, and a repeated load is decided once. A multi-instance test starts an H2 TCP server and two application contexts sharing it, and checks the same limits across both. It fails if the row lock is removed.
+- Concurrency tests: simultaneous loads for one customer never exceed the daily count or amount, and a repeated load is decided once. A multi-instance test starts an H2 TCP server and five application contexts sharing it, and sends each one a load for the same customer at the same instant. Exactly three are accepted and two rejected, over 25 rounds. All five are accepted if the row lock is removed.
 - End-to-end batch tests: a hand-written edge-case fixture, and a diff of the full task input against Venn's expected output. The second one needs the task files in `question/` (not committed) and skips itself otherwise.
 
 ## Design
