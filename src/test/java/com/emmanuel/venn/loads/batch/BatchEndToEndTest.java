@@ -62,6 +62,16 @@ class BatchEndToEndTest {
     }
 
     @Test
+    void skipsALineWhoseIdIsNotAString() throws Exception {
+        Path input = Files.writeString(dir.resolve("numeric-id.txt"), """
+                {"id":15,"customer_id":"7","load_amount":"$1.00","time":"2018-01-01T00:00:00Z"}
+                {"id":"16","customer_id":"7","load_amount":"$1.00","time":"2018-01-01T00:00:00Z"}
+                """);
+
+        assertThat(runBatch(input)).isEqualTo("{\"id\":\"16\",\"customer_id\":\"7\",\"accepted\":true}\n");
+    }
+
+    @Test
     void everyAttemptIsStoredIncludingRejectedOnes() throws Exception {
         runBatch(FIXTURES.resolve("edge-cases-input.txt"));
 

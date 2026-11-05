@@ -35,6 +35,6 @@ Java 25, Spring Boot 4.x, Maven, Flyway, H2, Actuator, springdoc-openapi. No Lom
 ## Conventions
 - Small commits, one task each. Commit messages end with the `Co-Authored-By` trailer.
 - Comments only when the code can't explain itself. Rename instead of commenting.
-- Package is `com.emmanuel.venn`, grouped by feature. `loads` (controller, DTOs, handler, service, error handler) contains `attempts` (stored attempt history: public LoadAttempt/Decision/AttemptHistory contract, package-private JPA internals) and `batch` (the batch entry point). `velocity` is the configurable limit engine and knows nothing about loads. `observability` holds cross-cutting logging. `money` holds the exact `Money` type.
+- Package is `com.emmanuel.venn`, grouped by feature. `loads` (controller, DTOs, handler, service, error handler) contains `attempts` (stored attempt history: public LoadAttempt/Decision/AttemptHistory contract, package-private JPA internals) and `batch` (the batch entry point). `velocity` is the configurable limit engine and knows nothing about loads. `observability` holds cross-cutting logging. `web` holds HTTP filters such as the request size limit. `money` holds the exact `Money` type.
 - Dependencies point one way: batch -> loads -> attempts -> velocity -> money. Never import a feature from `velocity` or `observability`.
 - Cross-cutting code goes in a package named for its concern (`web`, `security`, `observability`), never `common`, `util` or `shared`.

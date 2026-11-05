@@ -35,7 +35,7 @@ class LoadApiTest {
     }
 
     @Test
-    void aTimestampFinerThanTheDatabaseKeepsIsCountedInTheDayItWasCheckedAgainst() throws Exception {
+    void aTimestampFinerThanMicrosecondsStaysInTheDayItWasCheckedAgainst() throws Exception {
         String lastInstantOfSunday = "2018-01-07T23:59:59.99999995Z";
 
         loadAt("s1", "api-5", "$5000.00", lastInstantOfSunday).andExpect(jsonPath("$.accepted").value(true));
@@ -46,6 +46,29 @@ class LoadApiTest {
     void aTimestampJustBeforeMidnightStaysInItsOwnDay() throws Exception {
         loadAt("s1", "api-6", "$5000.00", "2018-01-01T23:59:59.9999999Z").andExpect(jsonPath("$.accepted").value(true));
         loadAt("s2", "api-6", "$5000.00", "2018-01-02T00:00:00Z").andExpect(jsonPath("$.accepted").value(true));
+    }
+
+    @Test
+    void rejectsABodyLargerThanAnyValidLoad() throws Exception {
+        String padding = " ".repeat(20_000);
+        String body = """
+                {"id":"big","customer_id":"api-8","load_amount":"$1.00","time":"2018-01-01T00:00:00Z"}""" + padding;
+
+        mvc.perform(post("/v1/loads").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+    }
+
+    @Test
+    void rejectsIdsThatAreNotJsonStrings() throws Exception {
+        for (String id : new String[] {"15", "true", "1.5e3"}) {
+            String body = """
+                    {"id":%s,"customer_id":"api-9","load_amount":"$1.00","time":"2018-01-01T00:00:00Z"}"""
+                    .formatted(id);
+
+            mvc.perform(post("/v1/loads").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
     }
 
     @Test

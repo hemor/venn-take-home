@@ -4,7 +4,7 @@ import java.util.Currency;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties("velocity")
+@ConfigurationProperties(prefix = "velocity", ignoreUnknownFields = false)
 record VelocityProperties(List<RuleProperties> rules) {
 
     record RuleProperties(String name, WindowType window, Metric metric, Integer max, Long maxInCents,

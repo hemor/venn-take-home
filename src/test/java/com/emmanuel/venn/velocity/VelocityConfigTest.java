@@ -46,6 +46,16 @@ class VelocityConfigTest {
     }
 
     @Test
+    void failsStartupOnAnUnknownKeyInsteadOfIgnoringIt() {
+        runner.withPropertyValues(
+                "velocity.rules[0].name=TYPO", "velocity.rules[0].window=DAY",
+                "velocity.rules[0].metric=AMOUNT", "velocity.rules[0].max-in-cents=500",
+                "velocity.rules[0].curency=USD")
+                .run(context -> assertThat(context).hasFailed()
+                        .getFailure().hasStackTraceContaining("curency"));
+    }
+
+    @Test
     void failsStartupOnAnUnknownWindow() {
         runner.withPropertyValues(
                 "velocity.rules[0].name=BAD",
