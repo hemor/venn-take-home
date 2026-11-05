@@ -14,8 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8080").rstrip("/")
 RUN = uuid.uuid4().hex[:8]
-DAY = "2018-01-01T12:00:00Z"
-THREADS = 200
+DAY = "2018-01-01T00:00:00Z"
 
 
 def post(load_id, customer, amount):
@@ -30,9 +29,8 @@ def post(load_id, customer, amount):
         return e.code, None, time.monotonic() - started
 
 
-def fire(requests):
-    with ThreadPoolExecutor(THREADS) as pool:
-        return list(pool.map(lambda r: post(*r), requests))
+def load(i, customer, amount="$100.00"):
+    return f"{RUN}-{customer}-{i}", f"{RUN}-{customer}", amount
 
 
 def accepted(results):
@@ -46,6 +44,12 @@ def statuses(results):
     return counts
 
 
+def latency(results):
+    times = sorted(t for _, _, t in results)
+    return (f"p50={times[len(times) // 2] * 1000:.0f}ms p99={times[int(len(times) * .99)] * 1000:.0f}ms "
+            f"max={times[-1] * 1000:.0f}ms")
+
+
 failures = []
 
 
@@ -55,62 +59,77 @@ def check(name, ok, detail):
         failures.append(name)
 
 
-def a_same_customer_count_limit():
-    results = fire([(f"{RUN}-a{i}", f"{RUN}-a", "$100.00") for i in range(500)])
-    check("A 500 loads, one customer", accepted(results) == 3 and statuses(results) == {200: 500},
-          f"accepted={accepted(results)} (want 3), statuses={statuses(results)}")
+def burst(requests, workers):
+    started = time.monotonic()
+    with ThreadPoolExecutor(workers) as pool:
+        results = list(pool.map(lambda r: post(*r), requests))
+    wall = time.monotonic() - started
+    return results, f"{len(requests) / wall:.0f} req/s, {latency(results)}"
 
 
-def b_same_customer_amount_limit():
-    results = fire([(f"{RUN}-b{i}", f"{RUN}-b", "$5000.00") for i in range(500)])
-    check("B 500 loads of $5,000, one customer", accepted(results) == 1 and statuses(results) == {200: 500},
-          f"accepted={accepted(results)} (want 1), statuses={statuses(results)}")
+def one_customer_over_the_count_limit():
+    results, stats = burst([load(i, "count") for i in range(500)], 100)
+    check("500 loads of $100 for one customer (limit 3 a day)",
+          accepted(results) == 3 and statuses(results) == {200: 500},
+          f"accepted={accepted(results)} (want 3), statuses={statuses(results)}, {stats}")
 
 
-def c_many_customers():
-    results = fire([(f"{RUN}-c{i}", f"{RUN}-c{i}", "$100.00") for i in range(1000)])
-    check("C 1000 customers, one load each", accepted(results) == 1000 and statuses(results) == {200: 1000},
-          f"accepted={accepted(results)} (want 1000), statuses={statuses(results)}")
+def one_customer_over_the_amount_limit():
+    results, stats = burst([load(i, "amount", "$5000.00") for i in range(200)], 100)
+    check("200 loads of $5,000 for one customer (limit $5,000 a day)",
+          accepted(results) == 1 and statuses(results) == {200: 200},
+          f"accepted={accepted(results)} (want 1), statuses={statuses(results)}, {stats}")
 
 
-def d_identical_request():
-    results = fire([(f"{RUN}-d", f"{RUN}-d", "$100.00")] * 200)
-    check("D 200 identical requests", statuses(results) == {200: 1, 204: 199},
-          f"statuses={statuses(results)} (want one 200 and 199 204)")
+def many_customers():
+    results, stats = burst([load(0, f"many{i}") for i in range(1000)], 100)
+    check("1000 customers, one load each",
+          accepted(results) == 1000 and statuses(results) == {200: 1000},
+          f"accepted={accepted(results)} (want 1000), statuses={statuses(results)}, {stats}")
 
 
-def e_mixed_customers():
-    requests = [(f"{RUN}-e{c}-{i}", f"{RUN}-e{c}", "$1.00") for i in range(10) for c in range(300)]
-    results = fire(requests)
-    check("E 300 customers, 10 loads each", accepted(results) == 900 and statuses(results) == {200: 3000},
-          f"accepted={accepted(results)} (want 900), statuses={statuses(results)}")
+def identical_request_sent_concurrently():
+    request = (f"{RUN}-same", f"{RUN}-same", "$10.00")
+    results, stats = burst([request] * 200, 100)
+    check("the same load sent 200 times at once", statuses(results) == {200: 1, 204: 199},
+          f"statuses={statuses(results)} (want one 200 and 199 204), {stats}")
 
 
-def f_hot_customer_among_cold_ones():
-    hot = [(f"{RUN}-fh{i}", f"{RUN}-fh", "$100.00") for i in range(500)]
-    cold = [(f"{RUN}-fc{i}", f"{RUN}-fc{i}", "$100.00") for i in range(200)]
-    results = fire(hot + cold)
-    hot_results, cold_results = results[:500], results[500:]
-    slowest_cold = max(t for _, _, t in cold_results)
-    check("F one hot customer among 200 others",
-          accepted(hot_results) == 3 and accepted(cold_results) == 200,
-          f"hot accepted={accepted(hot_results)} (want 3), cold accepted={accepted(cold_results)} (want 200), "
-          f"slowest cold request {slowest_cold:.2f}s")
+def many_customers_over_the_count_limit():
+    results, stats = burst([load(i, f"mixed{i % 300}") for i in range(3000)], 300)
+    check("3000 loads over 300 customers (10 each, limit 3 a day)",
+          accepted(results) == 900 and statuses(results) == {200: 3000},
+          f"accepted={accepted(results)} (want 900), statuses={statuses(results)}, {stats}")
 
 
-def g_retrying_a_declined_load():
-    customer = f"{RUN}-g"
-    first = post(f"{RUN}-g0", customer, "$5000.01")
-    retries = [post(f"{RUN}-g0", customer, "$5000.01") for _ in range(50)]
-    check("G 50 sequential retries of a declined load",
+def hot_customer_among_others():
+    hot = [load(i, "hot") for i in range(1000)]
+    cold = [load(0, f"cold{i}") for i in range(500)]
+    with ThreadPoolExecutor(200) as pool:
+        hot_futures = [pool.submit(post, *r) for r in hot]
+        time.sleep(0.05)
+        cold_futures = [pool.submit(post, *r) for r in cold]
+        hot_results = [f.result() for f in hot_futures]
+        cold_results = [f.result() for f in cold_futures]
+    check("1000 loads for one customer while 500 other customers load",
+          accepted(hot_results) == 3 and accepted(cold_results) == 500,
+          f"hot accepted={accepted(hot_results)} (want 3), cold accepted={accepted(cold_results)} (want 500), "
+          f"cold {latency(cold_results)}")
+
+
+def retrying_a_declined_load():
+    request = load(0, "retry", "$5000.01")
+    first = post(*request)
+    retries = [post(*request) for _ in range(50)]
+    check("50 sequential retries of a declined load",
           first[0] == 200 and not first[1]["accepted"] and all(r[0] == 204 for r in retries),
           f"first={first[0]} accepted={first[1] and first[1]['accepted']}, retry statuses={statuses(retries)}")
 
 
 if __name__ == "__main__":
     print(f"Target {BASE}, run id {RUN}")
-    for scenario in (a_same_customer_count_limit, b_same_customer_amount_limit, c_many_customers,
-                     d_identical_request, e_mixed_customers, f_hot_customer_among_cold_ones,
-                     g_retrying_a_declined_load):
+    for scenario in (one_customer_over_the_count_limit, one_customer_over_the_amount_limit, many_customers,
+                     identical_request_sent_concurrently, many_customers_over_the_count_limit,
+                     hot_customer_among_others, retrying_a_declined_load):
         scenario()
     sys.exit(1 if failures else 0)

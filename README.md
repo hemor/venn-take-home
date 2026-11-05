@@ -36,17 +36,14 @@ curl -X POST localhost:8080/v1/loads -H 'Content-Type: application/json' \
   -d '{"id":"1234","customer_id":"1234","load_amount":"$123.45","time":"2018-01-01T00:00:00Z"}'
 ```
 
-It returns 200 with the decision, or 204 for a repeated load ID. Invalid input gets a 400 ProblemDetail. The API docs are at `/docs`.
+It returns 200 with the decision, or 204 for a repeated load ID. Invalid input gets a 400 ProblemDetail. The API docs are at `/docs`. With the service running, `scripts/load-check.py` fires concurrent and repeated requests and checks the decisions.
 
-## Design
+## Design overview
 
-- The REST controller and the batch runner are thin adapters over one `LoadHandler`, which validates the input and calls `LoadService`. Start reading at `LoadService`.
-- The limits are data under `velocity.rules` in `application.yaml`. They are checked in order, and the first broken rule's name is stored as the rejection reason. The rule and policy classes in `velocity` are plain Java with no database or loads dependency.
-- Money is exact: `long` minor units (cents) plus a currency code, never floating point. An amount rule can be limited to one currency.
-- Every decided attempt is stored with its status, using JPA, Flyway SQL and in-memory H2. A unique `(customer_id, load_id)` constraint backs duplicate detection.
-- Concurrency: loads for one customer are serialized by an in-process queue and a `customer_lock` row lock, so simultaneous requests cannot exceed a limit. `MultiInstanceTest` verifies this across five instances on a shared H2 server. The default in-memory H2 is private to one instance, so running several instances needs a shared database.
-- Logs carry a correlation ID, and Micrometer metrics are exposed at `/actuator/prometheus`.
+- The REST controller and the batch runner are thin adapters over one `LoadHandler`, which validates the input and calls `LoadService`.
+- The limits are data under `velocity.rules` in `application.yaml`, checked in order. The first broken rule's name is stored as the rejection reason.
+- Money is exact: `long` minor units (cents) plus a currency code, never floating point.
+- Every decided attempt is stored (JPA, Flyway SQL, in-memory H2). A unique `(customer_id, load_id)` constraint backs duplicate detection.
+- Loads for one customer are serialized by an in-process queue and a `customer_lock` row lock, so simultaneous requests cannot exceed a limit.
 
-Not covered: authentication, and currencies other than CAD.
-
-Built with Claude Code.
+The full design, concurrency guarantees, test approach and the path to production are in [ENG DESIGN.md](ENG%20DESIGN.md).
