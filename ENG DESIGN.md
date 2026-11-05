@@ -337,7 +337,9 @@ Limits of this check:
 
 - It exercises one instance; `MultiInstanceTest` alone covers several.
 - With 200 client workers taking tasks in order, the hot queue never exceeds about 200, and the other customers overlap only its tail. The pool-starvation guarantee comes from `LoadConcurrencyTest`.
-- Timings include the Python client's overhead (a new connection per request) and are laptop numbers, not capacity numbers.
+- Timings include the Python client's overhead and are laptop numbers, not capacity numbers.
+
+All seven checks also passed against the Docker image in OrbStack over HTTPS; its timings (130–240 req/s, p99 up to 2.5 s) include OrbStack's proxy, so they are not comparable.
 
 ## 10. Path to production
 
@@ -389,15 +391,15 @@ Run stateless instances, all active, against one primary database. The row lock 
 
 - **Every pull request.** Run `./mvnw verify`, which includes the multi-instance test, plus the Testcontainers run against the production database engine from 10.1.
 - **The Venn comparison** skips itself in CI because `question/` is gitignored. Supply the files as a protected artifact, or rely on the committed edge-case fixture.
-- **The image.** Build from the `Dockerfile`, scan (e.g. Trivy), and push tagged with the git SHA. **The Dockerfile has never been built**, so the first CI run will be its first real test.
-- **Staging.** Deploy, run `scripts/load-check.py` as a smoke test, then promote. It writes test rows, so never run it against production.
+- **The image.** Build from the `Dockerfile`, scan (e.g. Trivy), and push tagged with the git SHA. It builds, runs and passes the load check locally (9.2), but is not yet built in CI or scanned.
+- **Staging.** Deploy, run `scripts/load-check.py` as a smoke test, then promote. It writes test rows, so never in production.
 - **Migrations.** Keep them backward compatible (expand, then contract), because old and new versions run side by side during a rollout. Run Flyway as a separate job before the rollout, and set `spring.flyway.enabled=false` on the app pods. `ddl-auto: validate` still fails a pod's startup if the job has not run.
 
 ### 10.6 Deploy strategies
 
-- **Rolling.** The default, safe for code changes since instances are stateless. A `velocity.rules` change is the exception: mid-rollout, old and new instances enforce different limits.
-- **Blue/green.** For a rule change that needs one cutover point, with instant rollback. Both colours share the database, so the schema must suit both.
-- **Canary.** For decision-path changes: compare the canary's `loads_processed_total` by outcome and reason, and its 5xx ratio, with the baseline before widening.
+- **Rolling.** The default, safe for code changes. A `velocity.rules` change is the exception: mid-rollout, old and new instances enforce different limits.
+- **Blue/green.** For a rule change needing one cutover point, with instant rollback. The shared schema must suit both colours.
+- **Canary.** For decision-path changes: compare the canary's `loads_processed_total` by outcome and reason, and 5xx ratio, with the baseline.
 - **Active/active versus active/passive.**
   - Within a region, all instances serve traffic against one primary database.
   - Across regions, the per-customer guarantee needs a single writer, so run active/passive: a replicated standby database and app tier, with failover. With asynchronous replication, failover can lose the last few accepted loads and their dedupe keys. Some customers could then briefly exceed a limit, and a retry of a lost load would be decided again.
@@ -447,7 +449,7 @@ Batch mode has no web server, so it has no scrape endpoint. Its observability is
 ## 12. Risks
 
 1. **The default database is in-memory and private to each process** (7.4). A restart resets every customer's limits.
-2. **Untested beyond H2.** The schema and locking have only run on H2, and the per-vendor behaviour in 10.1 is reasoned, not run. The Dockerfile has never been built.
+2. **Untested beyond H2.** The schema and locking have only run on H2, and the per-vendor behaviour in 10.1 is reasoned, not run. The image is not yet built in CI or scanned.
 3. **Unbounded waiting for a hot customer** (7.5). Fix it with a bounded `tryLock` that returns 429 or 503, plus per-customer rate limiting at the gateway (10.3).
 4. **Client-supplied time.** The caller decides which window a load falls in, and could backdate a load into an empty past week. A fix would bound `time` against the server clock, or use server time, but on the REST path only (open question 3). Venn's batch input is dated 2000, so a bound would reject or rewrite every line. Batch replays of historical files must either skip the bound or not share the production table.
 5. **Rule changes during a rolling deploy** briefly run two rule sets at once (10.6).
