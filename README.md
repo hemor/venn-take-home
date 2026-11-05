@@ -32,7 +32,7 @@ velocity:
     - name: DAILY_AMOUNT_LIMIT
       window: DAY
       metric: AMOUNT
-      max-in-cents: 500000         # $5,000.00; the smallest unit of the currency, never decimals
+      max-in-cents: 500_000
       # currency: CAD             # optional, AMOUNT only; limits this rule to loads in that currency
 ```
 
