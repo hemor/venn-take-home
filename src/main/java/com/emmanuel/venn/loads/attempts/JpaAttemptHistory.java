@@ -3,17 +3,51 @@ package com.emmanuel.venn.loads.attempts;
 import com.emmanuel.venn.velocity.TimeRange;
 import com.emmanuel.venn.velocity.Totals;
 import java.math.BigDecimal;
+import java.util.function.Supplier;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Repository
 class JpaAttemptHistory implements AttemptHistory {
 
     private final LoadAttemptRepository repository;
+    private final CustomerLockRepository locks;
+    private final TransactionTemplate transaction;
+    private final TransactionTemplate separateTransaction;
 
-    JpaAttemptHistory(LoadAttemptRepository repository) {
+    JpaAttemptHistory(LoadAttemptRepository repository, CustomerLockRepository locks,
+            PlatformTransactionManager transactionManager) {
         this.repository = repository;
+        this.locks = locks;
+        this.transaction = new TransactionTemplate(transactionManager);
+        this.separateTransaction = new TransactionTemplate(transactionManager);
+        this.separateTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    @Override
+    public <T> T withCustomerLock(String customerId, Supplier<T> action) {
+        ensureLockRowExists(customerId);
+        return transaction.execute(status -> {
+            locks.lockByCustomerId(customerId);
+            return action.get();
+        });
+    }
+
+    // Its own transaction: a unique violation from a concurrent first insert would otherwise poison the caller's.
+    private void ensureLockRowExists(String customerId) {
+        try {
+            separateTransaction.executeWithoutResult(status -> {
+                if (!locks.existsById(customerId)) {
+                    locks.saveAndFlush(new CustomerLockEntity(customerId));
+                }
+            });
+        } catch (DataIntegrityViolationException e) {
+            // another request created it first
+        }
     }
 
     @Override

@@ -5,6 +5,7 @@ import com.emmanuel.venn.velocity.Totals;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class InMemoryAttemptHistory implements AttemptHistory {
 
@@ -12,6 +13,11 @@ public class InMemoryAttemptHistory implements AttemptHistory {
 
     public final List<Stored> stored = new ArrayList<>();
     public boolean failNextSaveAsDuplicate;
+
+    @Override
+    public <T> T withCustomerLock(String customerId, Supplier<T> action) {
+        return action.get();
+    }
 
     @Override
     public boolean exists(String customerId, String loadId) {

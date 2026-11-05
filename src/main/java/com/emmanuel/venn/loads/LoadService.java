@@ -29,27 +29,32 @@ public class LoadService {
 
     /** @return the decision, or empty when the load id was already seen for this customer */
     public Optional<Decision> process(LoadAttempt attempt) {
+        Optional<Decision> decision;
+        try {
+            decision = attempts.withCustomerLock(attempt.customerId(), () -> decide(attempt));
+        } catch (DuplicateLoadException e) {
+            decision = Optional.empty();
+        }
+        decision.ifPresentOrElse(d -> record(attempt, d), () -> logDuplicate(attempt));
+        return decision;
+    }
+
+    private Optional<Decision> decide(LoadAttempt attempt) {
         if (attempts.exists(attempt.customerId(), attempt.loadId())) {
-            return ignoreDuplicate(attempt);
+            return Optional.empty();
         }
         Decision decision = policy
                 .evaluate(attempt.amount(), attempt.time(),
                         range -> attempts.acceptedTotals(attempt.customerId(), range))
                 .map(Decision::rejected)
                 .orElseGet(Decision::accepted);
-        try {
-            attempts.save(attempt, decision);
-        } catch (DuplicateLoadException e) {
-            return ignoreDuplicate(attempt);
-        }
-        record(attempt, decision);
+        attempts.save(attempt, decision);
         return Optional.of(decision);
     }
 
-    private Optional<Decision> ignoreDuplicate(LoadAttempt attempt) {
+    private void logDuplicate(LoadAttempt attempt) {
         log.info("Ignoring repeated load {} for customer {}", attempt.loadId(), attempt.customerId());
         meters.counter(METRIC, "outcome", "duplicate").increment();
-        return Optional.empty();
     }
 
     private void record(LoadAttempt attempt, Decision decision) {
