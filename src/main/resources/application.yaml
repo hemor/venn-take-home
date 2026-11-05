@@ -20,6 +20,8 @@ spring:
           time_zone: UTC
 
 springdoc:
+  api-docs:
+    path: /api-docs
   swagger-ui:
     path: /docs
 

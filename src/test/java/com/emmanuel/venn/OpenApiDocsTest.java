@@ -20,7 +20,7 @@ class OpenApiDocsTest {
 
     @Test
     void documentsTheLoadEndpointAndItsResponses() throws Exception {
-        mvc.perform(get("/v3/api-docs"))
+        mvc.perform(get("/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/v1/loads'].post.responses['200']").exists())
                 .andExpect(jsonPath("$.paths['/v1/loads'].post.responses['204']").exists())
@@ -36,7 +36,7 @@ class OpenApiDocsTest {
 
     @Test
     void usesTheSnakeCaseFieldNamesOfTheTask() throws Exception {
-        mvc.perform(get("/v3/api-docs"))
+        mvc.perform(get("/api-docs"))
                 .andExpect(jsonPath("$.components.schemas.LoadRequest.properties.customer_id").exists())
                 .andExpect(jsonPath("$.components.schemas.LoadRequest.properties.load_amount").exists())
                 .andExpect(jsonPath("$.components.schemas.LoadResponse.properties.accepted").exists());
