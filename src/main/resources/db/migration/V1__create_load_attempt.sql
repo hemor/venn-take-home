@@ -14,4 +14,4 @@ CREATE TABLE load_attempt (
         OR (status = 'REJECTED' AND rejection_reason IS NOT NULL))
 );
 
-CREATE INDEX ix_load_attempt_customer_time ON load_attempt (customer_id, occurred_at);
+CREATE INDEX ix_load_attempt_customer_status_time ON load_attempt (customer_id, status, occurred_at);
