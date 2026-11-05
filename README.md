@@ -32,11 +32,13 @@ velocity:
     - name: DAILY_AMOUNT_LIMIT
       window: DAY
       metric: AMOUNT
-      max: 5000                    # in major units, such as dollars
+      max-in-cents: 500000         # $5,000.00; the smallest unit of the currency, never decimals
       # currency: CAD             # optional, AMOUNT only; limits this rule to loads in that currency
 ```
 
-Rules are checked in the order listed and the first one broken is the reason reported. Add, remove or change entries to change the limits, for example a weekly cap of 10 loads is one more entry. To change them without rebuilding, put the `velocity` block in a separate file and start the app with `--spring.config.additional-location=file:./rules.yaml`. A list in the external file replaces the built-in one. Startup fails if there are no rules, a rule is invalid (blank name, non-positive max, fractional count) or two rules share a name.
+A COUNT rule is capped with `max` and an AMOUNT rule with `max-in-cents`. Using the other key for a rule type fails startup.
+
+Rules are checked in the order listed and the first one broken is the reason reported. Add, remove or change entries to change the limits, for example a weekly cap of 10 loads is one more entry. To change them without rebuilding, put the `velocity` block in a separate file and start the app with `--spring.config.additional-location=file:./rules.yaml`. A list in the external file replaces the built-in one. Startup fails if there are no rules, a rule is invalid (blank name, a non-positive limit, the wrong key for its metric) or two rules share a name.
 
 A new window type (for example a month) is one enum constant in `WindowType`.
 

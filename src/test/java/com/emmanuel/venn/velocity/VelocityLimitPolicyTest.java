@@ -132,8 +132,8 @@ class VelocityLimitPolicyTest {
     @Test
     void appliesEachAmountRuleOnlyToLoadsInItsOwnCurrency() {
         List<VelocityRule> rules = List.of(
-                new VelocityRule("DAILY_AMOUNT_CAD", WindowType.DAY, new Limit.MaxAmount(new BigDecimal("100"), CAD)),
-                new VelocityRule("DAILY_AMOUNT_USD", WindowType.DAY, new Limit.MaxAmount(new BigDecimal("50"), USD)));
+                new VelocityRule("DAILY_AMOUNT_CAD", WindowType.DAY, new Limit.MaxAmount(10_000, CAD)),
+                new VelocityRule("DAILY_AMOUNT_USD", WindowType.DAY, new Limit.MaxAmount(5_000, USD)));
         VelocityLimitPolicy policy = new VelocityLimitPolicy(rules);
         ActivityLookup nothingYet = (range, currency) -> Totals.none(currency);
 

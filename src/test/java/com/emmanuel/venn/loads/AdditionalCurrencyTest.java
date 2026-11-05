@@ -24,17 +24,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
         "velocity.rules[1].name=DAILY_AMOUNT_LIMIT_CAD",
         "velocity.rules[1].window=DAY",
         "velocity.rules[1].metric=AMOUNT",
-        "velocity.rules[1].max=5000",
+        "velocity.rules[1].max-in-cents=500000",
         "velocity.rules[1].currency=CAD",
         "velocity.rules[2].name=DAILY_AMOUNT_LIMIT_USD",
         "velocity.rules[2].window=DAY",
         "velocity.rules[2].metric=AMOUNT",
-        "velocity.rules[2].max=3000",
+        "velocity.rules[2].max-in-cents=300000",
         "velocity.rules[2].currency=USD",
         "velocity.rules[3].name=DAILY_AMOUNT_LIMIT_JPY",
         "velocity.rules[3].window=DAY",
         "velocity.rules[3].metric=AMOUNT",
-        "velocity.rules[3].max=500000",
+        "velocity.rules[3].max-in-cents=500000",
         "velocity.rules[3].currency=JPY"})
 class AdditionalCurrencyTest {
 

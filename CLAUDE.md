@@ -4,7 +4,7 @@ Spring Boot service that accepts or declines fund-load attempts per customer. In
 
 ## Rules (verified against Venn's expected output)
 - Per customer: max $5,000/day, $20,000/week, 3 loads/day. Limits are inclusive: exactly $5,000 is allowed.
-- Rules are data under `velocity.rules` in application.yaml (name, window DAY|WEEK, metric AMOUNT|COUNT, max). The rule name is stored as the rejection reason. Order matters: the first broken rule is reported.
+- Rules are data under `velocity.rules` in application.yaml (name, window DAY|WEEK, metric AMOUNT|COUNT, and `max` for COUNT or `max-in-cents` for AMOUNT). The rule name is stored as the rejection reason. Order matters: the first broken rule is reported.
 - Amounts are stored as minor units (cents) with a currency code. `$` in the input means CAD. An amount rule may name a currency, and then applies only to it; without one it applies to everything with no conversion. A count rule counts all.
 - Day = UTC date. Week starts Monday 00:00 UTC.
 - Only accepted loads count toward the limits. Declined loads do not.

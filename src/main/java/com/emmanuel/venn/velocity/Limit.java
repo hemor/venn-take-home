@@ -1,7 +1,6 @@
 package com.emmanuel.venn.velocity;
 
 import com.emmanuel.venn.money.Money;
-import java.math.BigDecimal;
 import java.util.Currency;
 
 /** What a rule caps: a number of loads, or an amount, optionally in one currency. */
@@ -18,16 +17,13 @@ public sealed interface Limit {
 
     /**
      * With a currency, applies only to loads in it. Without one, applies to every load and is read in the
-     * currency of the load being checked, without conversion.
+     * minor units of the load's own currency, without conversion.
      */
-    record MaxAmount(BigDecimal max, Currency currency) implements Limit {
+    record MaxAmount(long maxMinorUnits, Currency currency) implements Limit {
 
         public MaxAmount {
-            if (max == null || max.signum() <= 0) {
-                throw new IllegalArgumentException("max must be positive");
-            }
-            if (currency != null) {
-                Money.ofMajor(max, currency);
+            if (maxMinorUnits <= 0) {
+                throw new IllegalArgumentException("max-in-cents must be positive");
             }
         }
 
@@ -36,7 +32,7 @@ public sealed interface Limit {
         }
 
         public Money in(Currency loadCurrency) {
-            return Money.ofMajor(max, loadCurrency);
+            return new Money(maxMinorUnits, loadCurrency);
         }
     }
 }

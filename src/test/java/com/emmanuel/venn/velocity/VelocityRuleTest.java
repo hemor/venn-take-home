@@ -14,8 +14,8 @@ class VelocityRuleTest {
 
     private static final Currency USD = Currency.getInstance("USD");
 
-    private static VelocityRule amountRule(String max) {
-        return new VelocityRule("DAILY_AMOUNT", WindowType.DAY, new Limit.MaxAmount(new BigDecimal(max), CAD));
+    private static VelocityRule amountRule(long maxInCents) {
+        return new VelocityRule("DAILY_AMOUNT", WindowType.DAY, new Limit.MaxAmount(maxInCents, CAD));
     }
 
     private static VelocityRule countRule(int max) {
@@ -28,12 +28,12 @@ class VelocityRuleTest {
 
     @Test
     void amountRuleAllowsTotalExactlyAtMax() {
-        assertThat(amountRule("5000").isExceededBy(totals("3000.00", 1), cad("2000.00"))).isFalse();
+        assertThat(amountRule(500_000).isExceededBy(totals("3000.00", 1), cad("2000.00"))).isFalse();
     }
 
     @Test
     void amountRuleIsExceededByOneCentOverMax() {
-        assertThat(amountRule("5000").isExceededBy(totals("3000.00", 1), cad("2000.01"))).isTrue();
+        assertThat(amountRule(500_000).isExceededBy(totals("3000.00", 1), cad("2000.01"))).isTrue();
     }
 
     @Test
@@ -55,13 +55,13 @@ class VelocityRuleTest {
     void anAmountRuleDoesNotApplyToLoadsInAnotherCurrency() {
         Money usdLoad = Money.ofMajor(new BigDecimal("999999"), USD);
 
-        assertThat(amountRule("5000").isExceededBy(Totals.none(USD), usdLoad)).isFalse();
+        assertThat(amountRule(500_000).isExceededBy(Totals.none(USD), usdLoad)).isFalse();
     }
 
     @Test
     void anAmountRuleInAnotherCurrencyAppliesToLoadsInThatCurrency() {
         VelocityRule usdRule = new VelocityRule("DAILY_AMOUNT_USD", WindowType.DAY,
-                new Limit.MaxAmount(new BigDecimal("100"), USD));
+                new Limit.MaxAmount(10_000, USD));
 
         assertThat(usdRule.isExceededBy(Totals.none(USD), Money.ofMajor(new BigDecimal("100.01"), USD))).isTrue();
         assertThat(usdRule.isExceededBy(Totals.none(USD), Money.ofMajor(new BigDecimal("100.00"), USD))).isFalse();
@@ -70,7 +70,7 @@ class VelocityRuleTest {
     @Test
     void anAmountRuleWithoutACurrencyAppliesToLoadsInAnyCurrency() {
         VelocityRule anyCurrency = new VelocityRule("DAILY_AMOUNT", WindowType.DAY,
-                new Limit.MaxAmount(new BigDecimal("5000"), null));
+                new Limit.MaxAmount(500_000, null));
 
         assertThat(anyCurrency.isExceededBy(Totals.none(CAD), cad("5000.01"))).isTrue();
         assertThat(anyCurrency.isExceededBy(Totals.none(USD), Money.ofMajor(new BigDecimal("5000.01"), USD))).isTrue();

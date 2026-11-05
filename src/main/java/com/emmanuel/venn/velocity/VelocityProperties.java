@@ -1,6 +1,5 @@
 package com.emmanuel.venn.velocity;
 
-import java.math.BigDecimal;
 import java.util.Currency;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -8,7 +7,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("velocity")
 record VelocityProperties(List<RuleProperties> rules) {
 
-    record RuleProperties(String name, WindowType window, Metric metric, BigDecimal max, String currency) {
+    record RuleProperties(String name, WindowType window, Metric metric, Integer max, Long maxInCents,
+            String currency) {
 
         VelocityRule toRule() {
             try {
@@ -19,25 +19,27 @@ record VelocityProperties(List<RuleProperties> rules) {
         }
 
         private Limit limit() {
-            if (metric == null || max == null) {
-                throw new IllegalArgumentException("needs a metric and a max");
+            if (metric == null) {
+                throw new IllegalArgumentException("needs a metric");
             }
             return switch (metric) {
                 case COUNT -> {
-                    if (currency != null) {
-                        throw new IllegalArgumentException("a COUNT rule cannot have a currency yet");
-                    }
-                    yield new Limit.MaxLoads(wholeNumber());
+                    require(maxInCents == null, "a COUNT rule is capped with max, not max-in-cents");
+                    require(currency == null, "a COUNT rule cannot have a currency yet");
+                    require(max != null, "a COUNT rule needs max");
+                    yield new Limit.MaxLoads(max);
                 }
-                case AMOUNT -> new Limit.MaxAmount(max, currency == null ? null : currencyOf());
+                case AMOUNT -> {
+                    require(max == null, "an AMOUNT rule is capped with max-in-cents, not max");
+                    require(maxInCents != null, "an AMOUNT rule needs max-in-cents");
+                    yield new Limit.MaxAmount(maxInCents, currency == null ? null : currencyOf());
+                }
             };
         }
 
-        private int wholeNumber() {
-            try {
-                return max.intValueExact();
-            } catch (ArithmeticException e) {
-                throw new IllegalArgumentException("max must be a whole number for a COUNT rule");
+        private static void require(boolean condition, String message) {
+            if (!condition) {
+                throw new IllegalArgumentException(message);
             }
         }
 
