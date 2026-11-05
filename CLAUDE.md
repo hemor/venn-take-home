@@ -14,7 +14,7 @@ Spring Boot service that accepts or declines fund-load attempts per customer. In
 ## Architecture
 - The service layer holds the logic. The REST controller and the batch runner are thin adapters over one `LoadHandler` that call it in-process.
 - Batch mode (`loads/batch`) is an `ApplicationRunner` active only with `--input` and `--output`. A malformed line is logged and skipped, never fatal.
-- Every attempt is stored with status (accepted/rejected) and a reason. Limit sums query accepted rows only.
+- Every decided attempt is stored with its status, and a rejected one with the broken rule's name as the reason. Invalid and duplicate attempts are not stored. Limit sums query accepted rows only.
 - Persistence: Spring Data JPA behind a repository interface, portable Flyway SQL, H2 in-memory by default.
 - Errors: `ProblemDetail` via `@RestControllerAdvice`. API is under `/v1/`.
 - Logging: SLF4J with a correlation ID in the MDC. Metrics: Micrometer `MeterRegistry` injected directly, no wrapper.

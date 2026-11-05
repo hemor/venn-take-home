@@ -9,7 +9,11 @@ import com.emmanuel.venn.loads.attempts.LoadAttempt;
 import java.io.StringReader;
 import java.io.StringWriter;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
+@ExtendWith(OutputCaptureExtension.class)
 class BatchProcessorTest {
 
     private static final String T0 = "2018-01-01T00:00:00Z";
@@ -23,6 +27,14 @@ class BatchProcessorTest {
     private static String line(String id, String customerId, String amount, String time) {
         return "{\"id\":\"%s\",\"customer_id\":\"%s\",\"load_amount\":\"%s\",\"time\":\"%s\"}"
                 .formatted(id, customerId, amount, time);
+    }
+
+    @Test
+    void logsAnUnreadableLineWithoutEchoingIt(CapturedOutput output) throws Exception {
+        BatchSummary summary = run(store, "SECRETTOKENabc\n", new StringWriter());
+
+        assertThat(summary.invalidLines()).isEqualTo(1);
+        assertThat(output).contains("Skipping line 1: unreadable JSON").doesNotContain("SECRETTOKENabc");
     }
 
     @Test

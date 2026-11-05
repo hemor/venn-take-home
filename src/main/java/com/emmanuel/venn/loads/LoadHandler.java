@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeParseException;
 import java.util.Currency;
 import java.util.Optional;
@@ -69,7 +70,7 @@ public class LoadHandler {
 
     private static Instant parseTime(String raw) {
         try {
-            Instant time = OffsetDateTime.parse(raw).toInstant();
+            Instant time = OffsetDateTime.parse(raw).toInstant().truncatedTo(ChronoUnit.MICROS);
             int year = time.atOffset(ZoneOffset.UTC).getYear();
             if (year < MIN_YEAR || year > MAX_YEAR) {
                 throw new InvalidLoadException("time must be in the years " + MIN_YEAR + " to " + MAX_YEAR);

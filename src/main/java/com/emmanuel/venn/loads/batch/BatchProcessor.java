@@ -57,9 +57,13 @@ class BatchProcessor {
                 } else {
                     duplicates++;
                 }
-            } catch (InvalidLoadException | JacksonException e) {
+            } catch (InvalidLoadException e) {
                 invalid++;
                 log.warn("Skipping line {}: {}", lineNumber, e.getMessage());
+            } catch (JacksonException e) {
+                invalid++;
+                log.warn("Skipping line {}: unreadable JSON ({}) at column {}", lineNumber,
+                        e.getClass().getSimpleName(), e.getLocation() == null ? "?" : e.getLocation().getColumnNr());
             }
         }
         output.flush();

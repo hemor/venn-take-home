@@ -52,6 +52,16 @@ class BatchEndToEndTest {
     }
 
     @Test
+    void skipsALineThatRepeatsAKey() throws Exception {
+        Path input = Files.writeString(dir.resolve("repeated-key.txt"), """
+                {"id":"15","id":"16","customer_id":"7","load_amount":"$1.00","time":"2018-01-01T00:00:00Z"}
+                {"id":"17","customer_id":"7","load_amount":"$1.00","time":"2018-01-01T00:00:00Z"}
+                """);
+
+        assertThat(runBatch(input)).isEqualTo("{\"id\":\"17\",\"customer_id\":\"7\",\"accepted\":true}\n");
+    }
+
+    @Test
     void everyAttemptIsStoredIncludingRejectedOnes() throws Exception {
         runBatch(FIXTURES.resolve("edge-cases-input.txt"));
 

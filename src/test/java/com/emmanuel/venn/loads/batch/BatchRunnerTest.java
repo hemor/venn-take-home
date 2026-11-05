@@ -44,6 +44,13 @@ class BatchRunnerTest {
     }
 
     @Test
+    void requiresInputWhenOnlyOutputIsGiven() {
+        assertThatThrownBy(() -> runner.run(new DefaultApplicationArguments("--output=" + dir.resolve("out.txt"))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("--input");
+    }
+
+    @Test
     void requiresOutputWhenInputIsGiven() throws Exception {
         Path input = Files.writeString(dir.resolve("in.txt"), LINE);
 
@@ -117,6 +124,7 @@ class BatchRunnerTest {
     @Test
     void detectsBatchModeFromInputOption() {
         assertThat(BatchRunner.isRequested(new String[] {"--input=in.txt", "--output=out.txt"})).isTrue();
+        assertThat(BatchRunner.isRequested(new String[] {"--output=out.txt"})).isTrue();
         assertThat(BatchRunner.isRequested(new String[] {"--server.port=9000"})).isFalse();
         assertThat(BatchRunner.isRequested(new String[] {"--input-dir=x"})).isFalse();
         assertThat(BatchRunner.isRequested(new String[] {})).isFalse();

@@ -135,7 +135,7 @@ money/            exact amounts in minor units with a currency, used by loads an
 - Dependencies point one way: `batch` uses `loads`, `loads` uses `attempts`, `attempts` uses `velocity`, `velocity` uses `money`, and `money` and `observability` use nothing.
 - The controller and the batch runner are thin adapters over one `LoadHandler`, so validation and mapping happen in one place.
 - The rule classes have no Spring or database dependency (only `VelocityConfig` and `VelocityProperties` wire them in), so they are tested without a context.
-- Every attempt is stored with its decision and rejection reason, which doubles as an audit trail. `customer_lock` holds one row per customer, locked while a load is decided. A unique `(customer_id, load_id)` constraint backs duplicate detection and a check constraint ties status to rejection reason.
+- Every decided attempt is stored with its status, and a rejected one with the name of the rule it broke, which doubles as an audit trail. Invalid and duplicate attempts are not stored. `customer_lock` holds one row per customer, locked while a load is decided. A unique `(customer_id, load_id)` constraint backs duplicate detection and a check constraint ties status to rejection reason.
 - The schema is plain SQL under Flyway, and the service depends on a repository interface, so moving from H2 to Postgres means changing the datasource and adding the Postgres driver and Flyway's `flyway-database-postgresql` module.
 - Rules are data (`VelocityRule`) evaluated in order by `VelocityLimitPolicy`. The policy asks for a customer's accepted totals once per distinct window, and stops at the first broken rule.
 
@@ -162,7 +162,7 @@ For another database, set `SPRING_DATASOURCE_URL` along with the username and pa
 ## Known limitations and what I would do next
 
 - **Concurrency.** Decisions for one customer are serialized twice: by an in-process queue per customer, so waiting requests are parked virtual threads and not pooled connections or Tomcat workers, and by a row lock in `customer_lock`, so the check and the insert are atomic across instances. The cross-instance guarantee needs a database the instances share, which the default in-memory H2 is not. Point `SPRING_DATASOURCE_URL` at an H2 server (`jdbc:h2:tcp://host:9092/mem:venn;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=5000`) or Postgres. The row lock waits at most 5 seconds on H2 (`LOCK_TIMEOUT` in the URL); on Postgres I would set `lock_timeout`, which otherwise waits forever. The lock relies on read committed isolation, which the transaction sets explicitly. I would add a distributed lock such as Redis only if contention is measured.
-- **Retries.** A repeated load ID gets a `204`, so the original decision is not replayed. I would return the stored decision, or a `409` when the payload differs.
+- **Retries.** A repeated load ID gets a `204`, so the original decision is not replayed. The same holds for a batch rerun against a database that kept its rows, such as a shared one: loads already decided produce no output line, while the default in-memory database starts empty each run. I would return the stored decision, or a `409` when the payload differs.
 - **Authentication.** None. I would add an OAuth2 resource server, rate limiting and TLS.
 - **Secrets.** The database login is a placeholder in `application.yaml`. I would read it from a secrets store.
 - **Database.** In-memory H2 is fine for the task. In production I would use Postgres and run the repository tests against it with Testcontainers.

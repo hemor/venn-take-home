@@ -27,6 +27,36 @@ class LoadApiTest {
         return mvc.perform(post("/v1/loads").contentType(MediaType.APPLICATION_JSON).content(body));
     }
 
+    private ResultActions loadAt(String id, String customerId, String amount, String time) throws Exception {
+        String body = """
+                {"id":"%s","customer_id":"%s","load_amount":"%s","time":"%s"}"""
+                .formatted(id, customerId, amount, time);
+        return mvc.perform(post("/v1/loads").contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
+    @Test
+    void aTimestampFinerThanTheDatabaseKeepsIsCountedInTheDayItWasCheckedAgainst() throws Exception {
+        String lastInstantOfSunday = "2018-01-07T23:59:59.99999995Z";
+
+        loadAt("s1", "api-5", "$5000.00", lastInstantOfSunday).andExpect(jsonPath("$.accepted").value(true));
+        loadAt("s2", "api-5", "$5000.00", lastInstantOfSunday).andExpect(jsonPath("$.accepted").value(false));
+    }
+
+    @Test
+    void aTimestampJustBeforeMidnightStaysInItsOwnDay() throws Exception {
+        loadAt("s1", "api-6", "$5000.00", "2018-01-01T23:59:59.9999999Z").andExpect(jsonPath("$.accepted").value(true));
+        loadAt("s2", "api-6", "$5000.00", "2018-01-02T00:00:00Z").andExpect(jsonPath("$.accepted").value(true));
+    }
+
+    @Test
+    void rejectsARequestThatRepeatsAKey() throws Exception {
+        String body = """
+                {"id":"15","id":"16","customer_id":"api-7","load_amount":"$1.00","time":"2018-01-01T00:00:00Z"}""";
+
+        mvc.perform(post("/v1/loads").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
+    }
+
     @Test
     void acceptsThenDeclinesOverTheDailyLimitThenIgnoresARepeat() throws Exception {
         load("a1", "api-1", "$5000.00").andExpect(status().isOk()).andExpect(jsonPath("$.accepted").value(true));

@@ -35,12 +35,12 @@ public class BatchRunner implements ApplicationRunner {
     }
 
     public static boolean isRequested(String[] args) {
-        return Arrays.stream(args).anyMatch(arg -> arg.equals("--input") || arg.startsWith("--input="));
+        return Arrays.stream(args).anyMatch(arg -> isOption(arg, INPUT) || isOption(arg, OUTPUT));
     }
 
     @Override
     public void run(ApplicationArguments args) throws IOException {
-        if (!args.containsOption(INPUT)) {
+        if (!args.containsOption(INPUT) && !args.containsOption(OUTPUT)) {
             return;
         }
         Path input = Path.of(requiredOption(args, INPUT));
@@ -59,6 +59,10 @@ public class BatchRunner implements ApplicationRunner {
                 throw e;
             }
         }
+    }
+
+    private static boolean isOption(String arg, String name) {
+        return arg.equals("--" + name) || arg.startsWith("--" + name + "=");
     }
 
     // A stray non-UTF-8 byte then fails one line's validation instead of aborting the whole file.
