@@ -12,7 +12,7 @@ Assumptions:
 
 ## Build and run
 
-Requires Java 25. The Maven wrapper is included.
+Requires Java 25 or later. The Maven wrapper is included.
 
 ```
 ./mvnw test                  # unit, integration and end-to-end tests
@@ -22,11 +22,11 @@ Requires Java 25. The Maven wrapper is included.
 Batch mode reads a file and writes the decisions, without starting the web server:
 
 ```
-java -jar target/venn-take-home-0.0.1-SNAPSHOT.jar --input=input.txt --output=output.txt
+java -jar target/venn-take-home-0.0.1-SNAPSHOT.jar --input="question/Venn - Back-End - Input.txt" --output=output.txt
 diff <(tr -d '\r' < "question/Venn - Back-End - Output .txt") output.txt
 ```
 
-Invalid lines are logged and skipped. The diff strips carriage returns because Venn's expected output uses CRLF.
+Put Venn's input and output files in `question/` (it is gitignored). Invalid lines are logged and skipped. The diff strips carriage returns because Venn's expected output uses CRLF.
 
 API mode:
 
@@ -41,12 +41,12 @@ It returns 200 with the decision, or 204 for a repeated load ID. Invalid input g
 ## Design
 
 - The REST controller and the batch runner are thin adapters over one `LoadHandler`, which validates the input and calls `LoadService`. Start reading at `LoadService`.
-- The limits are data under `velocity.rules` in `application.yaml`. They are checked in order, and the first broken rule's name is stored as the rejection reason. The `velocity` package has no Spring, database or loads dependency.
+- The limits are data under `velocity.rules` in `application.yaml`. They are checked in order, and the first broken rule's name is stored as the rejection reason. The rule and policy classes in `velocity` are plain Java with no database or loads dependency.
 - Money is exact: `long` minor units (cents) plus a currency code, never floating point. An amount rule can be limited to one currency.
 - Every decided attempt is stored with its status, using JPA, Flyway SQL and in-memory H2. A unique `(customer_id, load_id)` constraint backs duplicate detection.
-- Concurrency: loads for one customer are serialized by an in-process queue and a `customer_lock` row lock, so simultaneous requests cannot exceed a limit. `MultiInstanceTest` runs five application instances on a shared H2 server and checks that exactly three of five simultaneous loads are accepted. The default in-memory H2 is private to one instance, so running several instances needs a shared database.
+- Concurrency: loads for one customer are serialized by an in-process queue and a `customer_lock` row lock, so simultaneous requests cannot exceed a limit. `MultiInstanceTest` verifies this across five instances on a shared H2 server. The default in-memory H2 is private to one instance, so running several instances needs a shared database.
 - Logs carry a correlation ID, and Micrometer metrics are exposed at `/actuator/prometheus`.
 
-Not covered: authentication, and currencies other than CAD (a rule with a currency is supported, but no input produces one yet).
+Not covered: authentication, and currencies other than CAD.
 
 Built with Claude Code.
